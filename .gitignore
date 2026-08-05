@@ -1,37 +1,37 @@
-# # Nuxt dev/build outputs
-# .output
-# .data
-# .nuxt
-# .nitro
-# .cache
-# dist
+# Nuxt dev/build outputs
+.output
+.data
+.nuxt
+.nitro
+.cache
+dist
 
-# # Node dependencies
+# Node dependencies
 node_modules
 
 
-# # Logs
-# logs
-# *.log
+# Logs
+logs
+*.log
 
-# # Misc
-# .DS_Store
-# .fleet
-# .idea
+# Misc
+.DS_Store
+.fleet
+.idea
 
-# # Local env files
-# .env
-# .env.*
-# !.env.example
+# Local env files
+.env
+.env.*
+!.env.example
 
-# # Test outputs
-# coverage
-# playwright-report
-# test-results
-# .stryker-tmp
+# Test outputs
+coverage
+playwright-report
+test-results
+.stryker-tmp
 
-# # Prisma generated
-# prisma/generated
+# Prisma generated
+prisma/generated
 
-# # Storage runtime
-# storage
+# Storage runtime
+storage
