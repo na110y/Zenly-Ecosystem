@@ -1,0 +1,29 @@
+{
+  "ignore": ["prisma/**"],
+  "ignoreDependencies": [
+    "@prisma/client",
+    "argon2",
+    "chart.js",
+    "jose",
+    "otpauth",
+    "qrcode",
+    "resend",
+    "sharp",
+    "uuid",
+    "vue-chartjs",
+    "vue-router",
+    "web-push",
+    "@axe-core/playwright",
+    "@faker-js/faker",
+    "@testcontainers/postgresql",
+    "@types/qrcode",
+    "@types/web-push",
+    "@unrs/resolver-binding-win32-x64-msvc",
+    "fast-check",
+    "msw",
+    "tsx",
+    "vue-tsc",
+    "@stryker-mutator/api",
+    "vitest-environment-nuxt"
+  ]
+}

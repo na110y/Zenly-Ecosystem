@@ -1,0 +1,49 @@
+services:
+  app:
+    build: .
+    container_name: zenly-app
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://zenly:change_me@db:5432/zenly
+      NUXT_SESSION_SECRET: dev_session_secret_at_least_32_bytes_long
+      NUXT_DATA_ENCRYPTION_KEY: dev_encryption_key_32_bytes_long!
+      NUXT_VISITOR_HMAC_KEY: dev_visitor_hmac_key
+      NUXT_TOTP_ENCRYPTION_KEY: dev_totp_key_32_bytes_long______
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    container_name: zenly-db
+    restart: unless-stopped
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: zenly
+      POSTGRES_PASSWORD: change_me
+      POSTGRES_DB: zenly
+    volumes:
+      - zenly-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U zenly']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  db-test:
+    image: postgres:17-alpine
+    container_name: zenly-db-test
+    restart: unless-stopped
+    ports:
+      - '5433:5432'
+    environment:
+      POSTGRES_USER: zenly_test
+      POSTGRES_PASSWORD: change_me
+      POSTGRES_DB: zenly_test
+
+volumes:
+  zenly-pgdata:

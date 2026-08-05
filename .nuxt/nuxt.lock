@@ -1,0 +1,9 @@
+{
+  "pid": 11708,
+  "startedAt": 1785935784060,
+  "command": "dev",
+  "cwd": "C:/Zenly-Ecosystem",
+  "port": 3000,
+  "hostname": "::1",
+  "url": "http://[::1]:3000"
+}

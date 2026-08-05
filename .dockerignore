@@ -1,0 +1,16 @@
+node_modules
+.nuxt
+.output
+.git
+.vscode
+.claude
+plan
+setup
+coverage
+playwright-report
+test-results
+.stryker-tmp
+.env
+.env.*
+!.env.example
+*.md
