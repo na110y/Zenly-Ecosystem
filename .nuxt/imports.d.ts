@@ -41,4 +41,3 @@ export { useImage } from '../node_modules/.pnpm/@nuxt+image@2.1.0_@types+no_63fe
 export { usePWA, useTransparentPwaIcon, useMaskablePwaIcon, useFaviconPwaIcon, useApplePwaIcon, useAppleSplashScreenPwaIcon } from '../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magica_bb8c03dfc73256c9d6e62abcae94751c/node_modules/@vite-pwa/nuxt/dist/runtime/composables/index';
 export { useRobotsRule } from '../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/app/composables/useRobotsRule';
 export { useBotDetection } from '../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/app/composables/useBotDetection';
-export { useNuxtDevTools } from '../node_modules/.pnpm/@nuxt+devtools@3.4.1_db0@0._77ef7563ae5ae7c0b88cb19cfabcacf0/node_modules/@nuxt/devtools/dist/runtime/use-nuxt-devtools';

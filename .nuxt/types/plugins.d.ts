@@ -11,24 +11,18 @@ type NuxtAppInjections =
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/head/runtime/plugins/unhead.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/router.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/app/plugins/0.siteConfig.js")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/browser-devtools-timing.client.js")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/dev-server-logs.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/navigation-repaint.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/check-outdated-build.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/revive-payload.server.js")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/@nuxt+devtools@3.4.1_db0@0._77ef7563ae5ae7c0b88cb19cfabcacf0/node_modules/@nuxt/devtools/dist/runtime/plugins/devtools.server.js")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/@nuxt+devtools@3.4.1_db0@0._77ef7563ae5ae7c0b88cb19cfabcacf0/node_modules/@nuxt/devtools/dist/runtime/plugins/devtools.client.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/app/plugins/robot-meta.server.js")> &
   InjectionType<typeof import("../pwa-icons-plugin")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/warn.dev.server.js")> &
-  InjectionType<typeof import("../../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/check-if-layout-used.js")> &
   InjectionType<typeof import("../../node_modules/.pnpm/@vite-pwa+nuxt@1.1.1_magica_bb8c03dfc73256c9d6e62abcae94751c/node_modules/@vite-pwa/nuxt/dist/runtime/plugins/pwa.client.js")>
 
 declare module '#app' {
   interface NuxtApp extends NuxtAppInjections { }
 
   interface NuxtAppLiterals {
-    pluginName: 'vue-devtools-client' | 'nuxt:revive-payload:client' | 'nuxt:head' | 'nuxt:head' | 'nuxt:router' | 'nuxt-site-config:init' | 'nuxt:browser-devtools-timing' | 'nuxt:revive-payload:server' | 'nuxt:global-components' | 'vite-pwa:nuxt:pwa-icons-plugin' | 'nuxt:checkIfLayoutUsed' | 'vite-pwa:nuxt:client:plugin'
+    pluginName: 'nuxt:revive-payload:client' | 'nuxt:head' | 'nuxt:head' | 'nuxt:router' | 'nuxt-site-config:init' | 'nuxt:revive-payload:server' | 'nuxt:global-components' | 'vite-pwa:nuxt:pwa-icons-plugin' | 'vite-pwa:nuxt:client:plugin'
   }
 }
 

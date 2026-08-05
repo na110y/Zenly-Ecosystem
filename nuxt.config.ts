@@ -16,9 +16,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   vite: {
-    plugins: [
-      (await import('@tailwindcss/vite')).default(),
-    ],
+    plugins: [(await import('@tailwindcss/vite')).default()],
   },
 
   typescript: {

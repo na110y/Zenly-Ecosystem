@@ -6,26 +6,8 @@ declare module "nitropack/types" {
     '/__nuxt_error': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/handlers/renderer').default>>>>
     }
-    '/__site-config__/debug.json': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/routes/__site-config__/debug').default>>>>
-    }
     '/robots.txt': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/routes/robots-txt').default>>>>
-    }
-    '/__robots__/debug.json': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/routes/__robots__/debug').default>>>>
-    }
-    '/__robots__/debug-path.json': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/routes/__robots__/debug-path').default>>>>
-    }
-    '/__robots__/debug-production.json': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/routes/__robots__/debug-production').default>>>>
-    }
-    '/__sitemap__/debug.json': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/routes/__sitemap__/debug').default>>>>
-    }
-    '/__sitemap__/debug-production.json': {
-      'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/routes/__sitemap__/debug-production').default>>>>
     }
     '/__sitemap__/style.xsl': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/routes/sitemap.xsl').default>>>>
