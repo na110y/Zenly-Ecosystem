@@ -1,4 +1,4 @@
-import { u as useRuntimeConfig, e as encodePath, c as buildAssetsURL, p as publicAssetsURL, f as defineRenderHandler, g as getQuery, h as createError, d as destr, i as getRouteRules, r as relative, j as joinURL, k as getResponseStatusText, l as getResponseStatus, b as useNitroApp } from '../_/nitro.mjs';
+import { u as useRuntimeConfig, w as encodePath, x as buildAssetsURL, y as publicAssetsURL, z as defineRenderHandler, B as getQuery, e as createError, d as destr, C as getRouteRules, D as relative, E as joinURL, F as getResponseStatusText, G as getResponseStatus, b as useNitroApp } from '../_/nitro.mjs';
 import { createHead as createHead$1, propsToString, renderSSRHead } from 'unhead/server';
 import { hasInjectionContext, inject, isRef, toValue } from 'vue';
 import { DeprecationsPlugin } from 'unhead/legacy';
@@ -240,9 +240,9 @@ function encodeForwardSlashes(str) {
 
 const renderSSRHeadOptions = {"omitLineBreaks":true};
 
-const entryIds = ["../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/entry.js"];
+const entryIds = [];
 
-const entryFileName = "C-VaOYk7.js";
+const entryFileName = "BSlqv8N-.js";
 
 //#region src/runtime/handlers/renderer.ts
 globalThis.__buildAssetsURL = buildAssetsURL;

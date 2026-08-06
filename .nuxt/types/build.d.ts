@@ -28,6 +28,8 @@ declare module "#build/test-component-wrapper.mjs";
 declare module "#build/test-component-wrapper";
 declare module "#build/image-options.mjs";
 declare module "#build/image-options";
+declare module "#build/routes.mjs";
+declare module "#build/routes";
 declare module "#build/pages.mjs";
 declare module "#build/pages";
 declare module "#build/router.options.mjs";

@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://zenly:change_me@localhost:5432/zenly
+      NUXT_SESSION_SECRET: ci_session_secret_at_least_32_bytes_long
+      NUXT_DATA_ENCRYPTION_KEY: ci_data_encryption_key_32_bytes_long
+      NUXT_VISITOR_HMAC_KEY: ci_visitor_hmac_key_at_least_32_bytes
+      NUXT_TOTP_ENCRYPTION_KEY: ci_totp_encryption_key_32_bytes_long
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read Node version
+        id: node-version
+        run: echo "version=$(cat .nvmrc)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node-version.outputs.version }}
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test with coverage (real PostgreSQL via testcontainers)
+        run: pnpm test:coverage
+
+      - name: Check circular imports
+        run: pnpm check:cycles
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build production
+        run: pnpm build
+
+      - name: E2E smoke tests
+        run: pnpm test:e2e

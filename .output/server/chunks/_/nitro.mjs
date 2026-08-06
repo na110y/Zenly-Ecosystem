@@ -4,14 +4,17 @@ import { EventEmitter } from 'node:events';
 import { Buffer as Buffer$1 } from 'node:buffer';
 import { toValue } from 'vue';
 import { createConsola } from 'consola';
+import { z } from 'zod';
 import { promises, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { createHash, randomUUID, randomBytes } from 'node:crypto';
 import { createModuleLogger, createFilter } from 'nuxtseo-shared/utils';
 import { createNitroRouteRuleMatcher as createNitroRouteRuleMatcher$1 } from 'nuxtseo-shared/server';
 import { collectSitemap } from 'sitemapd/parse';
 import { ipxFSStorage, ipxHttpStorage, createIPX, createIPXNodeHandler, parseIPXURL } from 'ipx';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { resolve as resolve$2, dirname as dirname$1, join } from 'node:path';
-import { createHash } from 'node:crypto';
 
 const suspectProtoRx = /"(?:_|\\u0{2}5[Ff]){2}(?:p|\\u0{2}70)(?:r|\\u0{2}72)(?:o|\\u0{2}6[Ff])(?:t|\\u0{2}74)(?:o|\\u0{2}6[Ff])(?:_|\\u0{2}5[Ff]){2}"\s*:/;
 const suspectConstructorRx = /"(?:c|\\u0063)(?:o|\\u006[Ff])(?:n|\\u006[Ee])(?:s|\\u0073)(?:t|\\u0074)(?:r|\\u0072)(?:u|\\u0075)(?:c|\\u0063)(?:t|\\u0074)(?:o|\\u006[Ff])(?:r|\\u0072)"\s*:/;
@@ -105,7 +108,7 @@ function encodeQueryKey(text) {
 function encodePath(text) {
   return encode(text).replace(HASH_RE, "%23").replace(IM_RE, "%3F").replace(ENC_ENC_SLASH_RE, "%2F").replace(AMPERSAND_RE, "%26").replace(PLUS_RE, "%2B");
 }
-function decode(text = "") {
+function decode$1(text = "") {
   try {
     return decodeURIComponent("" + text);
   } catch {
@@ -113,13 +116,13 @@ function decode(text = "") {
   }
 }
 function decodePath(text) {
-  return decode(text.replace(ENC_SLASH_RE, "%252F"));
+  return decode$1(text.replace(ENC_SLASH_RE, "%252F"));
 }
 function decodeQueryKey(text) {
-  return decode(text.replace(PLUS_RE, " "));
+  return decode$1(text.replace(PLUS_RE, " "));
 }
 function decodeQueryValue(text) {
-  return decode(text.replace(PLUS_RE, " "));
+  return decode$1(text.replace(PLUS_RE, " "));
 }
 
 function parseQuery(parametersString = "") {
@@ -345,21 +348,6 @@ function withProtocol(input, protocol) {
   }
   return protocol + input.slice(match[0].length);
 }
-function isEqual(a, b, options = {}) {
-  if (!options.trailingSlash) {
-    a = withTrailingSlash(a);
-    b = withTrailingSlash(b);
-  }
-  if (!options.leadingSlash) {
-    a = withLeadingSlash(a);
-    b = withLeadingSlash(b);
-  }
-  if (!options.encoding) {
-    a = decode(a);
-    b = decode(b);
-  }
-  return a === b;
-}
 
 const protocolRelative = Symbol.for("ufo:protocolRelative");
 function parseURL(input = "", defaultProto) {
@@ -379,7 +367,7 @@ function parseURL(input = "", defaultProto) {
     };
   }
   if (!hasProtocol(input, { acceptRelative: true })) {
-    return defaultProto ? parseURL(defaultProto + input) : parsePath(input);
+    return parsePath(input);
   }
   const [, protocol = "", auth, hostAndPath = ""] = input.replace(/\\/g, "/").match(/^[\s\0]*([\w+.-]{2,}:)?\/\/([^/@]+@)?(.*)/) || [];
   let [, host = "", path = ""] = hostAndPath.match(/([^#/?]*)(.*)?/) || [];
@@ -413,6 +401,217 @@ function stringifyParsedURL(parsed) {
   const host = parsed.host || "";
   const proto = parsed.protocol || parsed[protocolRelative] ? (parsed.protocol || "") + "//" : "";
   return proto + auth + host + pathname + search + hash;
+}
+
+const NullObject = /* @__PURE__ */ (() => {
+  const C = function() {
+  };
+  C.prototype = /* @__PURE__ */ Object.create(null);
+  return C;
+})();
+function parse(str, options) {
+  if (typeof str !== "string") {
+    throw new TypeError("argument str must be a string");
+  }
+  const obj = new NullObject();
+  const opt = {};
+  const dec = opt.decode || decode;
+  let index = 0;
+  while (index < str.length) {
+    const eqIdx = str.indexOf("=", index);
+    if (eqIdx === -1) {
+      break;
+    }
+    let endIdx = str.indexOf(";", index);
+    if (endIdx === -1) {
+      endIdx = str.length;
+    } else if (endIdx < eqIdx) {
+      index = str.lastIndexOf(";", eqIdx - 1) + 1;
+      continue;
+    }
+    const key = str.slice(index, eqIdx).trim();
+    if (opt?.filter && !opt?.filter(key)) {
+      index = endIdx + 1;
+      continue;
+    }
+    if (void 0 === obj[key]) {
+      let val = str.slice(eqIdx + 1, endIdx).trim();
+      if (val.codePointAt(0) === 34) {
+        val = val.slice(1, -1);
+      }
+      obj[key] = tryDecode(val, dec);
+    }
+    index = endIdx + 1;
+  }
+  return obj;
+}
+function decode(str) {
+  return str.includes("%") ? decodeURIComponent(str) : str;
+}
+function tryDecode(str, decode2) {
+  try {
+    return decode2(str);
+  } catch {
+    return str;
+  }
+}
+
+const fieldContentRegExp = /^[\u0009\u0020-\u007E\u0080-\u00FF]+$/;
+function serialize$1(name, value, options) {
+  const opt = options || {};
+  const enc = opt.encode || encodeURIComponent;
+  if (typeof enc !== "function") {
+    throw new TypeError("option encode is invalid");
+  }
+  if (!fieldContentRegExp.test(name)) {
+    throw new TypeError("argument name is invalid");
+  }
+  const encodedValue = enc(value);
+  if (encodedValue && !fieldContentRegExp.test(encodedValue)) {
+    throw new TypeError("argument val is invalid");
+  }
+  let str = name + "=" + encodedValue;
+  if (void 0 !== opt.maxAge && opt.maxAge !== null) {
+    const maxAge = opt.maxAge - 0;
+    if (Number.isNaN(maxAge) || !Number.isFinite(maxAge)) {
+      throw new TypeError("option maxAge is invalid");
+    }
+    str += "; Max-Age=" + Math.floor(maxAge);
+  }
+  if (opt.domain) {
+    if (!fieldContentRegExp.test(opt.domain)) {
+      throw new TypeError("option domain is invalid");
+    }
+    str += "; Domain=" + opt.domain;
+  }
+  if (opt.path) {
+    if (!fieldContentRegExp.test(opt.path)) {
+      throw new TypeError("option path is invalid");
+    }
+    str += "; Path=" + opt.path;
+  }
+  if (opt.expires) {
+    if (!isDate(opt.expires) || Number.isNaN(opt.expires.valueOf())) {
+      throw new TypeError("option expires is invalid");
+    }
+    str += "; Expires=" + opt.expires.toUTCString();
+  }
+  if (opt.httpOnly) {
+    str += "; HttpOnly";
+  }
+  if (opt.secure) {
+    str += "; Secure";
+  }
+  if (opt.priority) {
+    const priority = typeof opt.priority === "string" ? opt.priority.toLowerCase() : opt.priority;
+    switch (priority) {
+      case "low": {
+        str += "; Priority=Low";
+        break;
+      }
+      case "medium": {
+        str += "; Priority=Medium";
+        break;
+      }
+      case "high": {
+        str += "; Priority=High";
+        break;
+      }
+      default: {
+        throw new TypeError("option priority is invalid");
+      }
+    }
+  }
+  if (opt.sameSite) {
+    const sameSite = typeof opt.sameSite === "string" ? opt.sameSite.toLowerCase() : opt.sameSite;
+    switch (sameSite) {
+      case true: {
+        str += "; SameSite=Strict";
+        break;
+      }
+      case "lax": {
+        str += "; SameSite=Lax";
+        break;
+      }
+      case "strict": {
+        str += "; SameSite=Strict";
+        break;
+      }
+      case "none": {
+        str += "; SameSite=None";
+        break;
+      }
+      default: {
+        throw new TypeError("option sameSite is invalid");
+      }
+    }
+  }
+  if (opt.partitioned) {
+    str += "; Partitioned";
+  }
+  return str;
+}
+function isDate(val) {
+  return Object.prototype.toString.call(val) === "[object Date]" || val instanceof Date;
+}
+
+function parseSetCookie(setCookieValue, options) {
+  const parts = (setCookieValue || "").split(";").filter((str) => typeof str === "string" && !!str.trim());
+  const nameValuePairStr = parts.shift() || "";
+  const parsed = _parseNameValuePair(nameValuePairStr);
+  const name = parsed.name;
+  let value = parsed.value;
+  try {
+    value = options?.decode === false ? value : (options?.decode || decodeURIComponent)(value);
+  } catch {
+  }
+  const cookie = {
+    name,
+    value
+  };
+  for (const part of parts) {
+    const sides = part.split("=");
+    const partKey = (sides.shift() || "").trimStart().toLowerCase();
+    const partValue = sides.join("=");
+    switch (partKey) {
+      case "expires": {
+        cookie.expires = new Date(partValue);
+        break;
+      }
+      case "max-age": {
+        cookie.maxAge = Number.parseInt(partValue, 10);
+        break;
+      }
+      case "secure": {
+        cookie.secure = true;
+        break;
+      }
+      case "httponly": {
+        cookie.httpOnly = true;
+        break;
+      }
+      case "samesite": {
+        cookie.sameSite = partValue;
+        break;
+      }
+      default: {
+        cookie[partKey] = partValue;
+      }
+    }
+  }
+  return cookie;
+}
+function _parseNameValuePair(nameValuePairStr) {
+  let name = "";
+  let value = "";
+  const nameValueArr = nameValuePairStr.split("=");
+  if (nameValueArr.length > 1) {
+    name = nameValueArr.shift();
+    value = nameValueArr.join("=");
+  } else {
+    value = nameValuePairStr;
+  }
+  return { name, value };
 }
 
 const NODE_TYPES = {
@@ -827,6 +1026,20 @@ function isError(input) {
 function getQuery(event) {
   return getQuery$1(event.path || "");
 }
+function getRouterParams(event, opts = {}) {
+  let params = event.context.params || {};
+  if (opts.decode) {
+    params = { ...params };
+    for (const key in params) {
+      params[key] = decode$1(params[key]);
+    }
+  }
+  return params;
+}
+function getRouterParam(event, name, opts = {}) {
+  const params = getRouterParams(event, opts);
+  return params[name];
+}
 function isMethod(event, expected, allowHead) {
   if (typeof expected === "string") {
     if (event.method === expected) {
@@ -886,6 +1099,7 @@ function getRequestURL(event, opts = {}) {
 }
 
 const RawBodySymbol = Symbol.for("h3RawBody");
+const ParsedBodySymbol = Symbol.for("h3ParsedBody");
 const PayloadMethods$1 = ["PATCH", "POST", "PUT", "DELETE"];
 function readRawBody(event, encoding = "utf8") {
   assertMethod(event, PayloadMethods$1);
@@ -955,6 +1169,26 @@ function readRawBody(event, encoding = "utf8") {
   const result = encoding ? promise.then((buff) => buff.toString(encoding)) : promise;
   return result;
 }
+async function readBody(event, options = {}) {
+  const request = event.node.req;
+  if (hasProp(request, ParsedBodySymbol)) {
+    return request[ParsedBodySymbol];
+  }
+  const contentType = request.headers["content-type"] || "";
+  const body = await readRawBody(event);
+  let parsed;
+  if (contentType === "application/json") {
+    parsed = _parseJSON(body, options.strict ?? true);
+  } else if (contentType.startsWith("application/x-www-form-urlencoded")) {
+    parsed = _parseURLEncodedBody(body);
+  } else if (contentType.startsWith("text/")) {
+    parsed = body;
+  } else {
+    parsed = _parseJSON(body, options.strict ?? false);
+  }
+  request[ParsedBodySymbol] = parsed;
+  return parsed;
+}
 function getRequestWebStream(event) {
   if (!PayloadMethods$1.includes(event.method)) {
     return;
@@ -988,6 +1222,35 @@ function getRequestWebStream(event) {
       });
     }
   });
+}
+function _parseJSON(body = "", strict) {
+  if (!body) {
+    return void 0;
+  }
+  try {
+    return destr(body, { strict });
+  } catch {
+    throw createError$1({
+      statusCode: 400,
+      statusMessage: "Bad Request",
+      message: "Invalid JSON body"
+    });
+  }
+}
+function _parseURLEncodedBody(body) {
+  const form = new URLSearchParams(body);
+  const parsedForm = /* @__PURE__ */ Object.create(null);
+  for (const [key, value] of form.entries()) {
+    if (hasProp(parsedForm, key)) {
+      if (!Array.isArray(parsedForm[key])) {
+        parsedForm[key] = [parsedForm[key]];
+      }
+      parsedForm[key].push(value);
+    } else {
+      parsedForm[key] = value;
+    }
+  }
+  return parsedForm;
 }
 
 function handleCacheHeaders(event, opts) {
@@ -1042,6 +1305,47 @@ function sanitizeStatusCode(statusCode, defaultStatusCode = 200) {
     return defaultStatusCode;
   }
   return statusCode;
+}
+
+function getDistinctCookieKey(name, opts) {
+  return [name, opts.domain || "", opts.path || "/"].join(";");
+}
+
+function parseCookies(event) {
+  return parse(event.node.req.headers.cookie || "");
+}
+function getCookie(event, name) {
+  return parseCookies(event)[name];
+}
+function setCookie(event, name, value, serializeOptions = {}) {
+  if (!serializeOptions.path) {
+    serializeOptions = { path: "/", ...serializeOptions };
+  }
+  const newCookie = serialize$1(name, value, serializeOptions);
+  const currentCookies = splitCookiesString(
+    event.node.res.getHeader("set-cookie")
+  );
+  if (currentCookies.length === 0) {
+    event.node.res.setHeader("set-cookie", newCookie);
+    return;
+  }
+  const newCookieKey = getDistinctCookieKey(name, serializeOptions);
+  event.node.res.removeHeader("set-cookie");
+  for (const cookie of currentCookies) {
+    const parsed = parseSetCookie(cookie);
+    const key = getDistinctCookieKey(parsed.name, parsed);
+    if (key === newCookieKey) {
+      continue;
+    }
+    event.node.res.appendHeader("set-cookie", cookie);
+  }
+  event.node.res.appendHeader("set-cookie", newCookie);
+}
+function deleteCookie(event, name, serializeOptions) {
+  setCookie(event, name, "", {
+    ...serializeOptions,
+    maxAge: 0
+  });
 }
 function splitCookiesString(cookiesString) {
   if (Array.isArray(cookiesString)) {
@@ -4097,7 +4401,7 @@ function _expandFromEnv(value) {
 const _inlineRuntimeConfig = {
   "app": {
     "baseURL": "/",
-    "buildId": "2f31b014-ed1d-4095-b0bf-d19198b2ced2",
+    "buildId": "c0f7dc34-ace2-4397-9b02-3746582a3e53",
     "buildAssetsDir": "/_nuxt/",
     "cdnURL": ""
   },
@@ -4133,6 +4437,7 @@ const _inlineRuntimeConfig = {
     }
   },
   "public": {
+    "siteUrl": "",
     "nuxt-robots": {
       "version": "6.1.3",
       "isNuxtContentV2": false,
@@ -4174,7 +4479,7 @@ const _inlineRuntimeConfig = {
   "vapidPublicKey": "",
   "vapidPrivateKey": "",
   "vapidSubject": "",
-  "databaseUrl": "",
+  "databaseUrl": "postgresql://zenly:change_me@localhost:5432/zenly",
   "sitemap": {
     "cacheMaxAgeSeconds": 600,
     "debug": false
@@ -4874,7 +5179,7 @@ function getSiteConfig(e, _options) {
   return e.context.siteConfig.get(options);
 }
 
-const _QqHr9VtNb3wpAydiSCrljIyAizuDEKv0X9E09wm2txY = defineNitroPlugin(async (nitroApp) => {
+const _MvPP9FjzEYUML9QvqptTYg49itvqrWW0tSac4D1h0I = defineNitroPlugin(async (nitroApp) => {
   nitroApp.hooks.hook("render:html", async (ctx, { event }) => {
     const routeOptions = getSiteRouteRules(event);
     const isIsland = process.env.NUXT_COMPONENT_ISLANDS && event.path.startsWith("/__nuxt_island");
@@ -5397,7 +5702,7 @@ async function resolveRobotsTxtContext(e, nitro = useNitroApp()) {
   return generateRobotsTxtCtx;
 }
 
-const _qiaJCXbKREHn5JRf9keiGwyr1aqvyTI9_pLxC0WSK1Q = defineNitroPlugin(async (nitroApp) => {
+const _l9iBPkXe5OZebrjqiAGELxyVkiyOBuX7GRcMxmfPTbw = defineNitroPlugin(async (nitroApp) => {
   const { isNuxtContentV2, robotsDisabledValue, botDetection } = useRuntimeConfigNuxtRobots();
   if (botDetection !== false) {
     nitroApp._robotsPatternMap = createPatternMap();
@@ -5421,95 +5726,256 @@ const _qiaJCXbKREHn5JRf9keiGwyr1aqvyTI9_pLxC0WSK1Q = defineNitroPlugin(async (ni
   }
 });
 
+function defineNitroPlugin(def) {
+  return def;
+}
+
+const MIN_SECRET_BYTES = 32;
+const DEV_PLACEHOLDER_PATTERN = /^(change_me|dev_|replace_with_)/i;
+function secret(name) {
+  return z.string({ error: `${name} is required` }).min(MIN_SECRET_BYTES, `${name} must be at least ${MIN_SECRET_BYTES} bytes`);
+}
+const envSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  DATABASE_URL: z.string({ error: "DATABASE_URL is required" }).min(1, "DATABASE_URL is required"),
+  NUXT_SESSION_SECRET: secret("NUXT_SESSION_SECRET"),
+  NUXT_DATA_ENCRYPTION_KEY: secret("NUXT_DATA_ENCRYPTION_KEY"),
+  NUXT_VISITOR_HMAC_KEY: secret("NUXT_VISITOR_HMAC_KEY"),
+  NUXT_TOTP_ENCRYPTION_KEY: secret("NUXT_TOTP_ENCRYPTION_KEY")
+}).superRefine((value, ctx) => {
+  if (value.NODE_ENV !== "production") return;
+  const secretFields = [
+    "NUXT_SESSION_SECRET",
+    "NUXT_DATA_ENCRYPTION_KEY",
+    "NUXT_VISITOR_HMAC_KEY",
+    "NUXT_TOTP_ENCRYPTION_KEY"
+  ];
+  for (const field of secretFields) {
+    if (DEV_PLACEHOLDER_PATTERN.test(value[field])) {
+      ctx.addIssue({
+        code: "custom",
+        path: [field],
+        message: `${field} must not use a development placeholder value in production`
+      });
+    }
+  }
+  if (/change_me/i.test(value.DATABASE_URL)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["DATABASE_URL"],
+      message: "DATABASE_URL must not use a development placeholder value in production"
+    });
+  }
+});
+
+var __defProp$2 = Object.defineProperty;
+var __defNormalProp$2 = (obj, key, value) => key in obj ? __defProp$2(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$2 = (obj, key, value) => __defNormalProp$2(obj, key + "" , value);
+class EnvValidationError extends Error {
+  constructor(issues) {
+    super(`Environment validation failed: ${issues.join("; ")}`);
+    __publicField$2(this, "issues", issues);
+    this.name = "EnvValidationError";
+  }
+}
+function validateEnv(source = process.env) {
+  const result = envSchema.safeParse(source);
+  if (!result.success) {
+    const issues = result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`);
+    throw new EnvValidationError(issues);
+  }
+  return result.data;
+}
+
+function bootstrapEnv() {
+  try {
+    validateEnv();
+  } catch (error) {
+    if (error instanceof EnvValidationError) {
+      console.error(error.message);
+    }
+    throw error;
+  }
+}
+
+const _6LV5wdZTIpcBJ4njw6FzzfaWUkq3sYK09NlTUQ7ACM = defineNitroPlugin(() => {
+  bootstrapEnv();
+});
+
 const plugins = [
-  _QqHr9VtNb3wpAydiSCrljIyAizuDEKv0X9E09wm2txY,
-_qiaJCXbKREHn5JRf9keiGwyr1aqvyTI9_pLxC0WSK1Q
+  _MvPP9FjzEYUML9QvqptTYg49itvqrWW0tSac4D1h0I,
+_l9iBPkXe5OZebrjqiAGELxyVkiyOBuX7GRcMxmfPTbw,
+_6LV5wdZTIpcBJ4njw6FzzfaWUkq3sYK09NlTUQ7ACM
 ];
 
 const assets = {
   "/.gitkeep": {
     "type": "text/plain; charset=utf-8",
     "etag": "\"0-2jmj7l5rSw0yVb/vlWAYkK/YBwk\"",
-    "mtime": "2026-08-06T05:18:58.443Z",
+    "mtime": "2026-08-05T13:25:21.789Z",
     "size": 0,
     "path": "../public/.gitkeep"
   },
   "/_nuxt/Bd17z0YL.js": {
     "type": "text/javascript; charset=utf-8",
     "etag": "\"1615-CPDn06/EO3pj6KudXz5uMZ0FkhI\"",
-    "mtime": "2026-08-06T08:15:00.959Z",
+    "mtime": "2026-08-06T04:43:16.191Z",
     "size": 5653,
     "path": "../public/_nuxt/Bd17z0YL.js"
+  },
+  "/sw.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"3fc-bRBUCH3gY6Ts1NNbVJAXnQQ9Fd0\"",
+    "mtime": "2026-08-06T04:43:22.926Z",
+    "size": 1020,
+    "path": "../public/sw.js"
+  },
+  "/_nuxt/BGqm9rQI.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"224f-rFXaDRyqDbL8usf1gxu4vXZZaxI\"",
+    "mtime": "2026-08-06T04:43:16.191Z",
+    "size": 8783,
+    "path": "../public/_nuxt/BGqm9rQI.js"
+  },
+  "/_nuxt/Bwk3MxVs.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"ce0-/5GjVlr1X2fxwU7KjNujczSajIY\"",
+    "mtime": "2026-08-06T04:43:16.191Z",
+    "size": 3296,
+    "path": "../public/_nuxt/Bwk3MxVs.js"
+  },
+  "/_nuxt/BWph_03x.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"86f-e4AHrhcbSyyfB/8QD1Indi0x8tE\"",
+    "mtime": "2026-08-06T04:43:16.191Z",
+    "size": 2159,
+    "path": "../public/_nuxt/BWph_03x.js"
   },
   "/workbox-9c191d2f.js": {
     "type": "text/javascript; charset=utf-8",
     "etag": "\"3b08-FESaFuRU1G+tiFaqJ5mU8aDzyWU\"",
-    "mtime": "2026-08-06T08:15:53.115Z",
+    "mtime": "2026-08-06T04:43:22.927Z",
     "size": 15112,
     "path": "../public/workbox-9c191d2f.js"
   },
-  "/_nuxt/C-VaOYk7.js": {
+  "/_nuxt/C8BFcQK8.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"2bb4d-bCFlgsYNf/BLMEa8StP2SvdqwW4\"",
-    "mtime": "2026-08-06T08:15:00.957Z",
-    "size": 179021,
-    "path": "../public/_nuxt/C-VaOYk7.js"
+    "etag": "\"5db-eX2UqVGioQc+ei4N+7ow//tDSaM\"",
+    "mtime": "2026-08-06T04:43:16.192Z",
+    "size": 1499,
+    "path": "../public/_nuxt/C8BFcQK8.js"
   },
-  "/_nuxt/entry.D2oKggaz.css": {
-    "type": "text/css; charset=utf-8",
-    "etag": "\"2b1f-VYQPqXQiLiMPcEJHmZWPQrdJxjc\"",
-    "mtime": "2026-08-06T08:15:00.960Z",
-    "size": 11039,
-    "path": "../public/_nuxt/entry.D2oKggaz.css"
+  "/_nuxt/CybyEKoe.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"42e-WkpqnDXvziAZm58O7oCopXpgnks\"",
+    "mtime": "2026-08-06T04:43:16.192Z",
+    "size": 1070,
+    "path": "../public/_nuxt/CybyEKoe.js"
   },
-  "/_nuxt/error-404.BUx2tBka.css": {
+  "/_nuxt/C3C_r5c3.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"11c33-HlZ1WgHFLucOX7uByNqNdhqjMQo\"",
+    "mtime": "2026-08-06T04:43:16.191Z",
+    "size": 72755,
+    "path": "../public/_nuxt/C3C_r5c3.js"
+  },
+  "/_nuxt/BSlqv8N-.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"1caae-46vU7XxbyEsGqkB0SWGCkOIJB9M\"",
+    "mtime": "2026-08-06T04:43:16.191Z",
+    "size": 117422,
+    "path": "../public/_nuxt/BSlqv8N-.js"
+  },
+  "/_nuxt/D-l4523c.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"11b6-EIk0UNBaHcWlIzZnHhDS9Y4nT8c\"",
+    "mtime": "2026-08-06T04:43:16.192Z",
+    "size": 4534,
+    "path": "../public/_nuxt/D-l4523c.js"
+  },
+  "/_nuxt/D0dV62AC.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"701-LgAJOXFjdRm8rMc+eg/HX3kGVsM\"",
+    "mtime": "2026-08-06T04:43:16.192Z",
+    "size": 1793,
+    "path": "../public/_nuxt/D0dV62AC.js"
+  },
+  "/_nuxt/DevpJ9NZ.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"6d1-qGNGchexBJMJMjIzL/8nrSQD8mo\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 1745,
+    "path": "../public/_nuxt/DevpJ9NZ.js"
+  },
+  "/_nuxt/DNbDK9Rm.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"d4e-WgTBmErHV4Mbalb+e4ZgU8M7hh8\"",
+    "mtime": "2026-08-06T04:43:16.192Z",
+    "size": 3406,
+    "path": "../public/_nuxt/DNbDK9Rm.js"
+  },
+  "/_nuxt/entry.B1AfSAtB.css": {
     "type": "text/css; charset=utf-8",
-    "etag": "\"97d-u8Ib3/HXVZxJMnOJQKQmZl7ip/Y\"",
-    "mtime": "2026-08-06T08:15:00.963Z",
-    "size": 2429,
-    "path": "../public/_nuxt/error-404.BUx2tBka.css"
+    "etag": "\"13fb-beENR3n/6xYxG3BVArU5Cw1Npj0\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 5115,
+    "path": "../public/_nuxt/entry.B1AfSAtB.css"
   },
   "/_nuxt/error-500.C4i3tvnG.css": {
     "type": "text/css; charset=utf-8",
     "etag": "\"772-F0WDirlAENlqjR70vYF4ZpzCmYk\"",
-    "mtime": "2026-08-06T08:15:00.966Z",
+    "mtime": "2026-08-06T04:43:16.193Z",
     "size": 1906,
     "path": "../public/_nuxt/error-500.C4i3tvnG.css"
   },
-  "/sw.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"3fc-qYURqwVmftxKvNhS0pFlhjVoNWI\"",
-    "mtime": "2026-08-06T08:15:53.112Z",
-    "size": 1020,
-    "path": "../public/sw.js"
+  "/_nuxt/error-404.BUx2tBka.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"97d-u8Ib3/HXVZxJMnOJQKQmZl7ip/Y\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 2429,
+    "path": "../public/_nuxt/error-404.BUx2tBka.css"
   },
-  "/_nuxt/DDeGrpJf.js": {
+  "/_nuxt/pages.C1I5Ujw7.css": {
+    "type": "text/css; charset=utf-8",
+    "etag": "\"1b22-UuPOG0YXP6WI4N4Umt1hxvu7MdA\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 6946,
+    "path": "../public/_nuxt/pages.C1I5Ujw7.css"
+  },
+  "/_nuxt/DtY4ZLEd.js": {
     "type": "text/javascript; charset=utf-8",
-    "etag": "\"e6e-3Gkp+tBMi51wvAv0rGhiULtb/Xk\"",
-    "mtime": "2026-08-06T08:15:00.959Z",
-    "size": 3694,
-    "path": "../public/_nuxt/DDeGrpJf.js"
+    "etag": "\"751-JrQLbL3zuX5INWprU/BG9n4AepI\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 1873,
+    "path": "../public/_nuxt/DtY4ZLEd.js"
+  },
+  "/_nuxt/dUnLRaXE.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"e8f-/jhjPBw1GHge0e8rhOe/ozc5lp4\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 3727,
+    "path": "../public/_nuxt/dUnLRaXE.js"
+  },
+  "/_nuxt/YWw78c5H.js": {
+    "type": "text/javascript; charset=utf-8",
+    "etag": "\"530c-DQF02fpUAJ7tE+izK02w2bxVbQw\"",
+    "mtime": "2026-08-06T04:43:16.193Z",
+    "size": 21260,
+    "path": "../public/_nuxt/YWw78c5H.js"
   },
   "/_nuxt/builds/latest.json": {
     "type": "application/json",
-    "etag": "\"47-BL6LxpDAjznckLI7F5XdkUH4mFg\"",
-    "mtime": "2026-08-06T08:15:35.186Z",
+    "etag": "\"47-SiGXjxLLNM1xAz+oawCfGV9Fn48\"",
+    "mtime": "2026-08-06T04:43:20.627Z",
     "size": 71,
     "path": "../public/_nuxt/builds/latest.json"
   },
-  "/_nuxt/k7l5oyEJ.js": {
-    "type": "text/javascript; charset=utf-8",
-    "etag": "\"d2d-WM1aqMdz+vQLZe11wD1T+xjLYSw\"",
-    "mtime": "2026-08-06T08:15:00.960Z",
-    "size": 3373,
-    "path": "../public/_nuxt/k7l5oyEJ.js"
-  },
-  "/_nuxt/builds/meta/2f31b014-ed1d-4095-b0bf-d19198b2ced2.json": {
+  "/_nuxt/builds/meta/c0f7dc34-ace2-4397-9b02-3746582a3e53.json": {
     "type": "application/json",
-    "etag": "\"58-SNnxKgf2lctSEW3Fi+VYVzgQUlk\"",
-    "mtime": "2026-08-06T08:15:35.193Z",
+    "etag": "\"58-VBuMzmASWI2TMzpu5LQx/OdhxXk\"",
+    "mtime": "2026-08-06T04:43:20.627Z",
     "size": 88,
-    "path": "../public/_nuxt/builds/meta/2f31b014-ed1d-4095-b0bf-d19198b2ced2.json"
+    "path": "../public/_nuxt/builds/meta/c0f7dc34-ace2-4397-9b02-3746582a3e53.json"
   }
 };
 
@@ -5656,7 +6122,7 @@ function getAsset (id) {
 
 const METHODS = /* @__PURE__ */ new Set(["HEAD", "GET"]);
 const EncodingMap = { gzip: ".gz", br: ".br" };
-const _Xj3lgg = eventHandler((event) => {
+const _PII9wq = eventHandler((event) => {
   if (event.method && !METHODS.has(event.method)) {
     return;
   }
@@ -5719,6 +6185,336 @@ const _Xj3lgg = eventHandler((event) => {
   }
   return readAsset(id);
 });
+
+const REQUEST_ID_KEY = "requestId";
+function setRequestId(event, requestId) {
+  event.context[REQUEST_ID_KEY] = requestId;
+}
+function generateRequestId() {
+  return randomUUID();
+}
+
+const _VM7cio = defineEventHandler((event) => {
+  const requestId = generateRequestId();
+  setRequestId(event, requestId);
+  setResponseHeader(event, "X-Request-Id", requestId);
+});
+
+const TOKEN_BYTES = 32;
+function generateToken() {
+  return randomBytes(TOKEN_BYTES).toString("base64url");
+}
+function hashToken(token) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+async function resolveSession(token, deps) {
+  if (!token) {
+    return null;
+  }
+  const session = await deps.userRepository.findUserSessionByTokenHash(hashToken(token));
+  if (!session) {
+    return null;
+  }
+  if (session.revokedAt) {
+    return null;
+  }
+  if (session.expiresAt.getTime() < Date.now()) {
+    return null;
+  }
+  return { userId: session.userId };
+}
+
+var __defProp$1 = Object.defineProperty;
+var __defNormalProp$1 = (obj, key, value) => key in obj ? __defProp$1(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField$1 = (obj, key, value) => __defNormalProp$1(obj, key + "" , value);
+class UserRepository {
+  constructor(prisma) {
+    __publicField$1(this, "prisma", prisma);
+  }
+  findByEmail(email) {
+    return this.prisma.user.findUnique({ where: { email } });
+  }
+  createUser(input) {
+    return this.prisma.user.create({ data: input });
+  }
+  createEmailVerificationToken(input) {
+    return this.prisma.emailVerificationToken.create({ data: input });
+  }
+  findEmailVerificationTokenByHash(tokenHash) {
+    return this.prisma.emailVerificationToken.findUnique({ where: { tokenHash } });
+  }
+  async consumeEmailVerificationTokenAndActivateUser(tokenId, userId) {
+    await this.prisma.$transaction([
+      this.prisma.emailVerificationToken.update({
+        where: { id: tokenId },
+        data: { consumedAt: /* @__PURE__ */ new Date() }
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { status: "EMAIL_VERIFIED", emailVerifiedAt: /* @__PURE__ */ new Date() }
+      })
+    ]);
+  }
+  createUserSession(input) {
+    return this.prisma.userSession.create({ data: input });
+  }
+  findUserSessionByTokenHash(tokenHash) {
+    return this.prisma.userSession.findUnique({ where: { tokenHash } });
+  }
+  async revokeUserSession(sessionId) {
+    await this.prisma.userSession.update({
+      where: { id: sessionId },
+      data: { revokedAt: /* @__PURE__ */ new Date() }
+    });
+  }
+  findUserById(userId) {
+    return this.prisma.user.findUnique({ where: { id: userId } });
+  }
+  createPasswordResetToken(input) {
+    return this.prisma.passwordResetToken.create({ data: input });
+  }
+  findPasswordResetTokenByHash(tokenHash) {
+    return this.prisma.passwordResetToken.findUnique({ where: { tokenHash } });
+  }
+  async resetPasswordAndRevokeSessions(input) {
+    await this.prisma.$transaction([
+      this.prisma.passwordResetToken.update({
+        where: { id: input.tokenId },
+        data: { consumedAt: /* @__PURE__ */ new Date() }
+      }),
+      this.prisma.user.update({
+        where: { id: input.userId },
+        data: { passwordHash: input.passwordHash }
+      }),
+      this.prisma.userSession.updateMany({
+        where: { userId: input.userId, revokedAt: null },
+        data: { revokedAt: /* @__PURE__ */ new Date() }
+      })
+    ]);
+  }
+  updateProfile(userId, input) {
+    return this.prisma.user.update({ where: { id: userId }, data: input });
+  }
+  findNotificationPreferences(userId) {
+    return this.prisma.userNotificationPreference.findUnique({ where: { userId } });
+  }
+  upsertNotificationPreferences(userId, input) {
+    return this.prisma.userNotificationPreference.upsert({
+      where: { userId },
+      create: { userId, ...input },
+      update: input
+    });
+  }
+}
+
+function createPrismaClient(databaseUrl) {
+  const adapter = new PrismaPg(databaseUrl);
+  return new PrismaClient({ adapter });
+}
+
+let client;
+function getPrismaClient(databaseUrl) {
+  if (!client) {
+    client = createPrismaClient(databaseUrl);
+  }
+  return client;
+}
+
+const USER_CONTEXT_KEY = "user";
+function setUserContext(event, context) {
+  event.context[USER_CONTEXT_KEY] = context;
+}
+function getUserContext(event) {
+  return event.context[USER_CONTEXT_KEY];
+}
+
+const USER_SESSION_COOKIE = "UserSession";
+const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1e3;
+function sessionExpiryDate() {
+  return new Date(Date.now() + SESSION_TTL_MS);
+}
+
+async function resolveUserSessionMiddleware(event, config) {
+  const token = getCookie(event, USER_SESSION_COOKIE);
+  if (!token) {
+    return;
+  }
+  const prisma = getPrismaClient(config.databaseUrl);
+  const userRepository = new UserRepository(prisma);
+  const resolved = await resolveSession(token, { userRepository });
+  if (resolved) {
+    setUserContext(event, { userId: resolved.userId });
+  }
+}
+const _crsOe6 = defineEventHandler(
+  (event) => resolveUserSessionMiddleware(event, { databaseUrl: useRuntimeConfig(event).databaseUrl })
+);
+
+async function resolveAdminSession(token, deps) {
+  if (!token) {
+    return null;
+  }
+  const session = await deps.adminRepository.findAdminSessionByTokenHash(hashToken(token));
+  if (!session) {
+    return null;
+  }
+  if (session.revokedAt) {
+    return null;
+  }
+  if (session.expiresAt.getTime() < Date.now()) {
+    return null;
+  }
+  const admin = await deps.adminRepository.findById(session.adminAccountId);
+  if (!admin) {
+    return null;
+  }
+  return {
+    adminAccountId: admin.id,
+    role: admin.role,
+    totpVerifiedAt: session.totpVerifiedAt
+  };
+}
+
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, key + "" , value);
+class LastActiveSuperAdminError extends Error {
+}
+class AdminRepository {
+  constructor(prisma) {
+    __publicField(this, "prisma", prisma);
+  }
+  findByEmail(email) {
+    return this.prisma.adminAccount.findUnique({ where: { email } });
+  }
+  findById(adminAccountId) {
+    return this.prisma.adminAccount.findUnique({ where: { id: adminAccountId } });
+  }
+  createAdminSession(input) {
+    return this.prisma.adminSession.create({ data: input });
+  }
+  findAdminSessionByTokenHash(tokenHash) {
+    return this.prisma.adminSession.findUnique({ where: { tokenHash } });
+  }
+  findTotpCredential(adminAccountId) {
+    return this.prisma.adminTotpCredential.findUnique({ where: { adminAccountId } });
+  }
+  upsertTotpCredential(input) {
+    return this.prisma.adminTotpCredential.upsert({
+      where: { adminAccountId: input.adminAccountId },
+      create: input,
+      update: { secretEncrypted: input.secretEncrypted, activatedAt: null }
+    });
+  }
+  activateTotpCredential(id) {
+    return this.prisma.adminTotpCredential.update({
+      where: { id },
+      data: { activatedAt: /* @__PURE__ */ new Date() }
+    });
+  }
+  findAdminSessionById(id) {
+    return this.prisma.adminSession.findUnique({ where: { id } });
+  }
+  markAdminSessionTotpVerified(id) {
+    return this.prisma.adminSession.update({
+      where: { id },
+      data: { totpVerifiedAt: /* @__PURE__ */ new Date() }
+    });
+  }
+  createAdminAccount(input) {
+    return this.prisma.adminAccount.create({ data: input });
+  }
+  createAuditLog(input) {
+    return this.prisma.adminAuditLog.create({ data: input });
+  }
+  /**
+   * Locks every ACTIVE SUPER_ADMIN row (SELECT ... FOR UPDATE) before applying `mutate`,
+   * so two concurrent transactions attempting to demote/disable different SUPER_ADMINs
+   * cannot both observe "N others remain" and both commit — the second waits for the
+   * first's lock to release and re-evaluates against the post-mutation count.
+   */
+  async withLastActiveSuperAdminGuard(excludeAdminAccountId, mutate) {
+    await this.prisma.$transaction(async (tx) => {
+      const lockedActiveSuperAdmins = await tx.$queryRaw`
+        SELECT id FROM "AdminAccount"
+        WHERE role = 'SUPER_ADMIN' AND status = 'ACTIVE'
+        FOR UPDATE
+      `;
+      const remaining = lockedActiveSuperAdmins.filter((row) => row.id !== excludeAdminAccountId);
+      if (remaining.length === 0) {
+        throw new LastActiveSuperAdminError();
+      }
+      await mutate(tx);
+    });
+  }
+  async updateAdminAccountRole(adminAccountId, currentRole, newRole) {
+    if (currentRole === "SUPER_ADMIN" && newRole === "ADMIN") {
+      await this.withLastActiveSuperAdminGuard(adminAccountId, async (tx) => {
+        await tx.adminAccount.update({ where: { id: adminAccountId }, data: { role: newRole } });
+      });
+      return;
+    }
+    await this.prisma.adminAccount.update({
+      where: { id: adminAccountId },
+      data: { role: newRole }
+    });
+  }
+  async disableAdminAccount(adminAccountId, currentRole) {
+    if (currentRole === "SUPER_ADMIN") {
+      await this.withLastActiveSuperAdminGuard(adminAccountId, async (tx) => {
+        await tx.adminAccount.update({
+          where: { id: adminAccountId },
+          data: { status: "DISABLED" }
+        });
+      });
+      return;
+    }
+    await this.prisma.adminAccount.update({
+      where: { id: adminAccountId },
+      data: { status: "DISABLED" }
+    });
+  }
+  enableAdminAccount(adminAccountId) {
+    return this.prisma.adminAccount.update({
+      where: { id: adminAccountId },
+      data: { status: "ACTIVE" }
+    });
+  }
+  listAdminAccounts() {
+    return this.prisma.adminAccount.findMany({ orderBy: { createdAt: "asc" } });
+  }
+}
+
+const ADMIN_CONTEXT_KEY = "admin";
+function setAdminContext(event, context) {
+  event.context[ADMIN_CONTEXT_KEY] = context;
+}
+function getAdminContext(event) {
+  return event.context[ADMIN_CONTEXT_KEY];
+}
+
+const ADMIN_SESSION_COOKIE = "AdminSession";
+const ADMIN_SESSION_TTL_MS = 12 * 60 * 60 * 1e3;
+function adminSessionExpiryDate() {
+  return new Date(Date.now() + ADMIN_SESSION_TTL_MS);
+}
+
+async function resolveAdminSessionMiddleware(event, config) {
+  const token = getCookie(event, ADMIN_SESSION_COOKIE);
+  if (!token) {
+    return;
+  }
+  const prisma = getPrismaClient(config.databaseUrl);
+  const adminRepository = new AdminRepository(prisma);
+  const resolved = await resolveAdminSession(token, { adminRepository });
+  if (resolved) {
+    setAdminContext(event, resolved);
+  }
+}
+const _q2gVYq = defineEventHandler(
+  (event) => resolveAdminSessionMiddleware(event, { databaseUrl: useRuntimeConfig(event).databaseUrl })
+);
 
 const e=globalThis.process?.env||Object.create(null),t=globalThis.process||{env:e},n=t!==void 0&&t.env&&t.env.NODE_ENV||void 0,r=[[`claude`,[`CLAUDECODE`,`CLAUDE_CODE`]],[`replit`,[`REPL_ID`]],[`gemini`,[`GEMINI_CLI`]],[`codex`,[`CODEX_SANDBOX`,`CODEX_THREAD_ID`]],[`opencode`,[`OPENCODE`]],[`pi`,[i(`PATH`,/\.pi[\\/]agent/)]],[`auggie`,[`AUGMENT_AGENT`]],[`goose`,[`GOOSE_PROVIDER`]],[`junie`,[`JUNIE_DATA`,`JUNIE_SHIM_PATH`]],[`devin`,[i(`EDITOR`,/devin/)]],[`cursor`,[`CURSOR_AGENT`]],[`kiro`,[i(`TERM_PROGRAM`,/kiro/,{noTTY:true})]]];function i(n,r,i){return ()=>{if(i?.noTTY&&t.stdout?.isTTY)return  false;let a=e[n];return a?r.test(a):false}}function a(){let t=e.AI_AGENT;if(t)return {name:t.toLowerCase()};for(let[t,n]of r)for(let r of n)if(typeof r==`string`?e[r]:r())return {name:t};return {}}const o=a();o.name;!!o.name;const l=[[`APPVEYOR`],[`AWS_AMPLIFY`,`AWS_APP_ID`,{ci:true}],[`AZURE_PIPELINES`,`SYSTEM_TEAMFOUNDATIONCOLLECTIONURI`],[`AZURE_STATIC`,`INPUT_AZURE_STATIC_WEB_APPS_API_TOKEN`],[`APPCIRCLE`,`AC_APPCIRCLE`],[`BAMBOO`,`bamboo_planKey`],[`BITBUCKET`,`BITBUCKET_COMMIT`],[`BITRISE`,`BITRISE_IO`],[`BUDDY`,`BUDDY_WORKSPACE_ID`],[`BUILDKITE`],[`CIRCLE`,`CIRCLECI`],[`CIRRUS`,`CIRRUS_CI`],[`CLOUDFLARE_PAGES`,`CF_PAGES`,{ci:true}],[`CLOUDFLARE_WORKERS`,`WORKERS_CI`,{ci:true}],[`GOOGLE_CLOUDRUN`,`K_SERVICE`],[`GOOGLE_CLOUDRUN_JOB`,`CLOUD_RUN_JOB`],[`CODEBUILD`,`CODEBUILD_BUILD_ARN`],[`CODEFRESH`,`CF_BUILD_ID`],[`DRONE`],[`DRONE`,`DRONE_BUILD_EVENT`],[`DSARI`],[`GITHUB_ACTIONS`],[`GITLAB`,`GITLAB_CI`],[`GITLAB`,`CI_MERGE_REQUEST_ID`],[`GOCD`,`GO_PIPELINE_LABEL`],[`LAYERCI`],[`JENKINS`,`JENKINS_URL`],[`HUDSON`,`HUDSON_URL`],[`MAGNUM`],[`NETLIFY`],[`NETLIFY`,`NETLIFY_LOCAL`,{ci:false}],[`NEVERCODE`],[`RENDER`],[`SAIL`,`SAILCI`],[`SEMAPHORE`],[`SCREWDRIVER`],[`SHIPPABLE`],[`SOLANO`,`TDDIUM`],[`STRIDER`],[`TEAMCITY`,`TEAMCITY_VERSION`],[`TRAVIS`],[`VERCEL`,`NOW_BUILDER`],[`VERCEL`,`VERCEL`,{ci:false}],[`VERCEL`,`VERCEL_ENV`,{ci:false}],[`APPCENTER`,`APPCENTER_BUILD_ID`],[`CODESANDBOX`,`CODESANDBOX_SSE`,{ci:false}],[`CODESANDBOX`,`CODESANDBOX_HOST`,{ci:false}],[`STACKBLITZ`],[`STORMKIT`],[`CLEAVR`],[`ZEABUR`],[`CODESPHERE`,`CODESPHERE_APP_ID`,{ci:true}],[`RAILWAY`,`RAILWAY_PROJECT_ID`],[`RAILWAY`,`RAILWAY_SERVICE_ID`],[`DENO-DEPLOY`,`DENO_DEPLOY`],[`DENO-DEPLOY`,`DENO_DEPLOYMENT_ID`],[`FIREBASE_APP_HOSTING`,`FIREBASE_APP_HOSTING`,{ci:true}],[`EDGEONE_PAGES`,`EO_PAGES_CI`,{ci:true}]];function u(){for(let t of l)if(e[t[1]||t[0]])return {name:t[0].toLowerCase(),...t[2]};return e.SHELL===`/bin/jsh`&&t.versions?.webcontainer?{name:`stackblitz`,ci:false}:{name:``,ci:false}}const d=u();d.name;const p=t.platform||``,m=!!e.CI||d.ci!==false,h=!!t.stdout?.isTTY;!!e.DEBUG;const v=n===`test`||!!e.TEST;n===`production`||e.MODE===`production`;const b=n===`dev`||n===`development`||e.MODE===`development`;!!e.MINIMAL||m||v||!h;const S=/^win/i.test(p);!e.NO_COLOR&&(!!e.FORCE_COLOR||(h||S)&&e.TERM!==`dumb`||m);const E=(t.versions?.node||``).replace(/^v/,``)||null;Number(E?.split(`.`)[0])||null;const O=!!t?.versions?.node,k=`Bun`in globalThis,A=`Deno`in globalThis,j=`fastly`in globalThis,M=`Netlify`in globalThis,N=`EdgeRuntime`in globalThis,P=globalThis.navigator?.userAgent===`Cloudflare-Workers`,F=[[M,`netlify`],[N,`edge-light`],[P,`workerd`],[j,`fastly`],[A,`deno`],[k,`bun`],[O,`node`]];function I(){let e=F.find(e=>e[0]);if(e)return {name:e[1]}}const L=I();L?.name||``;
 
@@ -5817,7 +6613,7 @@ function getNitroOrigin(e) {
 }
 
 const PORT_SUFFIX_RE = /:\d+$/;
-const _xFqwhF = eventHandler(async (e) => {
+const _EHIFPU = eventHandler(async (e) => {
   if (e.context._initedSiteConfig)
     return;
   const runtimeConfig = useRuntimeConfig(e);
@@ -6077,7 +6873,7 @@ function getSiteRobotConfig(e) {
   return { indexable, hints };
 }
 
-const _njoBlm = defineEventHandler(async (e) => {
+const _b5YeKO = defineEventHandler(async (e) => {
   const nitroApp = useNitroApp();
   const { indexable} = getSiteRobotConfig(e);
   const { credits, isNuxtContentV2, cacheControl } = useRuntimeConfigNuxtRobots(e);
@@ -6261,7 +7057,7 @@ function getPathRobotConfig(e, options) {
   };
 }
 
-const _I7k2Th = defineEventHandler(async (e) => {
+const _XOmURt = defineEventHandler(async (e) => {
   if (e.path === "/robots.txt" || e.path.startsWith("/__") || e.path.startsWith("/api") || e.path.startsWith("/_nuxt"))
     return;
   const nuxtRobotsConfig = useRuntimeConfigNuxtRobots(e);
@@ -6403,7 +7199,7 @@ function useSitemapRuntimeConfig(e) {
   });
 }
 
-const _0ftrYn = defineEventHandler(async (e) => {
+const _MZgLS6 = defineEventHandler(async (e) => {
   const fixPath = createSitePathResolver(e, { absolute: false, withBase: true });
   const { sitemapName: fallbackSitemapName, cacheMaxAgeSeconds, version, xslColumns, xslTips } = useSitemapRuntimeConfig();
   setHeader(e, "Content-Type", "application/xslt+xml");
@@ -7935,13 +8731,9 @@ async function sitemapXmlEventHandler(e) {
   return createSitemap(e, Object.values(sitemaps)[0], runtimeConfig);
 }
 
-const _DVZqLG = defineEventHandler(sitemapXmlEventHandler);
+const _r1e46h = defineEventHandler(sitemapXmlEventHandler);
 
 const _SxA8c9 = defineEventHandler(() => {});
-
-function defineNitroPlugin(def) {
-  return def;
-}
 
 function defineRenderHandler(render) {
   const runtimeConfig = useRuntimeConfig();
@@ -7998,7 +8790,7 @@ function publicAssetsURL(...path) {
 	return path.length ? joinRelativeURL(publicBase, ...path) : publicBase;
 }
 
-const _NvVpqZ = lazyEventHandler(() => {
+const _t1VU8U = lazyEventHandler(() => {
   const opts = useRuntimeConfig().ipx || {};
   const fsDir = opts?.fs?.dir ? (Array.isArray(opts.fs.dir) ? opts.fs.dir : [opts.fs.dir]).map((dir) => isAbsolute(dir) ? dir : fileURLToPath(new URL(dir, globalThis._importMeta_.url))) : void 0;
   const fsStorage = opts.fs?.dir ? ipxFSStorage({ ...opts.fs, dir: fsDir }) : void 0;
@@ -8026,19 +8818,62 @@ const _NvVpqZ = lazyEventHandler(() => {
   return fromNodeMiddleware(nodeHandler);
 });
 
-const _lazy_L2moXB = () => import('../routes/renderer.mjs').then(function (n) { return n.r; });
+const _lazy_JWFqvb = () => import('../routes/api/admin/login.post.mjs');
+const _lazy_a1OUFZ = () => import('../routes/api/admin/login/totp.post.mjs');
+const _lazy_J2zBwl = () => import('../routes/api/admin/totp/activate.post.mjs');
+const _lazy_h4twar = () => import('../routes/api/admin/totp/setup.post.mjs');
+const _lazy_4K4Ph9 = () => import('../routes/api/public/health.get.mjs');
+const _lazy_7zsL6L = () => import('../routes/api/system/admins/_id_.patch.mjs');
+const _lazy_9XbfOM = () => import('../routes/api/system/index.get.mjs');
+const _lazy_TEwhUz = () => import('../routes/api/system/index.post.mjs');
+const _lazy_Mu5iOF = () => import('../routes/api/system/whoami.get.mjs');
+const _lazy_u8fOf6 = () => import('../routes/api/user/login.post.mjs');
+const _lazy_qL6uP7 = () => import('../routes/api/user/logout.post.mjs');
+const _lazy_yvZ2KO = () => import('../routes/api/user/me.get.mjs');
+const _lazy_204fgh = () => import('../routes/api/user/notification-preferences.get.mjs');
+const _lazy_zhmajs = () => import('../routes/api/user/notification-preferences.patch.mjs');
+const _lazy_67br1t = () => import('../routes/api/user/password/forgot.post.mjs');
+const _lazy_fZFTmx = () => import('../routes/api/user/password/reset.post.mjs');
+const _lazy_K_6zY1 = () => import('../routes/api/user/profile.get.mjs');
+const _lazy_I5Smb7 = () => import('../routes/api/user/profile.patch.mjs');
+const _lazy_Ge1hSb = () => import('../routes/api/user/register.post.mjs');
+const _lazy_ivNK3p = () => import('../routes/api/user/register/verify-email.post.mjs');
+const _lazy_JqKfLk = () => import('../routes/renderer.mjs').then(function (n) { return n.r; });
 
 const handlers = [
-  { route: '', handler: _Xj3lgg, lazy: false, middleware: true, method: undefined },
-  { route: '/__nuxt_error', handler: _lazy_L2moXB, lazy: true, middleware: false, method: undefined },
-  { route: '', handler: _xFqwhF, lazy: false, middleware: true, method: undefined },
-  { route: '/robots.txt', handler: _njoBlm, lazy: false, middleware: false, method: undefined },
-  { route: '', handler: _I7k2Th, lazy: false, middleware: true, method: undefined },
-  { route: '/__sitemap__/style.xsl', handler: _0ftrYn, lazy: false, middleware: false, method: undefined },
-  { route: '/sitemap.xml', handler: _DVZqLG, lazy: false, middleware: false, method: undefined },
+  { route: '', handler: _PII9wq, lazy: false, middleware: true, method: undefined },
+  { route: '', handler: _VM7cio, lazy: false, middleware: true, method: undefined },
+  { route: '', handler: _crsOe6, lazy: false, middleware: true, method: undefined },
+  { route: '', handler: _q2gVYq, lazy: false, middleware: true, method: undefined },
+  { route: '/api/admin/login', handler: _lazy_JWFqvb, lazy: true, middleware: false, method: "post" },
+  { route: '/api/admin/login/totp', handler: _lazy_a1OUFZ, lazy: true, middleware: false, method: "post" },
+  { route: '/api/admin/totp/activate', handler: _lazy_J2zBwl, lazy: true, middleware: false, method: "post" },
+  { route: '/api/admin/totp/setup', handler: _lazy_h4twar, lazy: true, middleware: false, method: "post" },
+  { route: '/api/public/health', handler: _lazy_4K4Ph9, lazy: true, middleware: false, method: "get" },
+  { route: '/api/system/admins/:id', handler: _lazy_7zsL6L, lazy: true, middleware: false, method: "patch" },
+  { route: '/api/system/admins', handler: _lazy_9XbfOM, lazy: true, middleware: false, method: "get" },
+  { route: '/api/system/admins', handler: _lazy_TEwhUz, lazy: true, middleware: false, method: "post" },
+  { route: '/api/system/whoami', handler: _lazy_Mu5iOF, lazy: true, middleware: false, method: "get" },
+  { route: '/api/user/login', handler: _lazy_u8fOf6, lazy: true, middleware: false, method: "post" },
+  { route: '/api/user/logout', handler: _lazy_qL6uP7, lazy: true, middleware: false, method: "post" },
+  { route: '/api/user/me', handler: _lazy_yvZ2KO, lazy: true, middleware: false, method: "get" },
+  { route: '/api/user/notification-preferences', handler: _lazy_204fgh, lazy: true, middleware: false, method: "get" },
+  { route: '/api/user/notification-preferences', handler: _lazy_zhmajs, lazy: true, middleware: false, method: "patch" },
+  { route: '/api/user/password/forgot', handler: _lazy_67br1t, lazy: true, middleware: false, method: "post" },
+  { route: '/api/user/password/reset', handler: _lazy_fZFTmx, lazy: true, middleware: false, method: "post" },
+  { route: '/api/user/profile', handler: _lazy_K_6zY1, lazy: true, middleware: false, method: "get" },
+  { route: '/api/user/profile', handler: _lazy_I5Smb7, lazy: true, middleware: false, method: "patch" },
+  { route: '/api/user/register', handler: _lazy_Ge1hSb, lazy: true, middleware: false, method: "post" },
+  { route: '/api/user/register/verify-email', handler: _lazy_ivNK3p, lazy: true, middleware: false, method: "post" },
+  { route: '/__nuxt_error', handler: _lazy_JqKfLk, lazy: true, middleware: false, method: undefined },
+  { route: '', handler: _EHIFPU, lazy: false, middleware: true, method: undefined },
+  { route: '/robots.txt', handler: _b5YeKO, lazy: false, middleware: false, method: undefined },
+  { route: '', handler: _XOmURt, lazy: false, middleware: true, method: undefined },
+  { route: '/__sitemap__/style.xsl', handler: _MZgLS6, lazy: false, middleware: false, method: undefined },
+  { route: '/sitemap.xml', handler: _r1e46h, lazy: false, middleware: false, method: undefined },
   { route: '/__nuxt_island/**', handler: _SxA8c9, lazy: false, middleware: false, method: undefined },
-  { route: '/_ipx/**', handler: _NvVpqZ, lazy: false, middleware: false, method: undefined },
-  { route: '/**', handler: _lazy_L2moXB, lazy: true, middleware: false, method: undefined }
+  { route: '/_ipx/**', handler: _t1VU8U, lazy: false, middleware: false, method: undefined },
+  { route: '/**', handler: _lazy_JqKfLk, lazy: true, middleware: false, method: undefined }
 ];
 
 function createNitroApp() {
@@ -8428,5 +9263,5 @@ function setupGracefulShutdown(listener, nitroApp) {
   });
 }
 
-export { $fetch$1 as $, parseURL as A, decodePath as B, isScriptProtocol as C, withTrailingSlash as D, withoutTrailingSlash as E, trapUnhandledNodeErrors as a, useNitroApp as b, buildAssetsURL as c, destr as d, encodePath as e, defineRenderHandler as f, getQuery as g, createError$1 as h, getRouteRules as i, joinURL as j, getResponseStatusText as k, getResponseStatus as l, baseURL as m, isEqual as n, stringifyParsedURL as o, publicAssetsURL as p, stringifyQuery as q, relative as r, setupGracefulShutdown as s, toNodeListener as t, useRuntimeConfig as u, parseQuery as v, hasProtocol as w, defu as x, withQuery as y, sanitizeStatusCode as z };
+export { $fetch$1 as $, AdminRepository as A, getQuery as B, getRouteRules as C, relative as D, joinURL as E, getResponseStatusText as F, getResponseStatus as G, baseURL as H, hasProtocol as I, withQuery as J, sanitizeStatusCode as K, LastActiveSuperAdminError as L, parseURL as M, decodePath as N, defu as O, parseQuery as P, isScriptProtocol as Q, withTrailingSlash as R, withoutTrailingSlash as S, UserRepository as U, trapUnhandledNodeErrors as a, useNitroApp as b, adminSessionExpiryDate as c, destr as d, createError$1 as e, getPrismaClient as f, generateToken as g, hashToken as h, setCookie as i, ADMIN_SESSION_COOKIE as j, defineEventHandler as k, getCookie as l, getAdminContext as m, getRouterParam as n, sessionExpiryDate as o, USER_SESSION_COOKIE as p, deleteCookie as q, readBody as r, setupGracefulShutdown as s, toNodeListener as t, useRuntimeConfig as u, getUserContext as v, encodePath as w, buildAssetsURL as x, publicAssetsURL as y, defineRenderHandler as z };
 //# sourceMappingURL=nitro.mjs.map

@@ -34,8 +34,10 @@ export default defineNuxtConfig({
     vapidPublicKey: '',
     vapidPrivateKey: '',
     vapidSubject: '',
-    databaseUrl: '',
-    public: {},
+    databaseUrl: process.env.DATABASE_URL ?? '',
+    public: {
+      siteUrl: '',
+    },
   },
 
   nitro: {

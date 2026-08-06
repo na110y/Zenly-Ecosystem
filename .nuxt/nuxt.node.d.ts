@@ -1,11 +1,11 @@
 /// <reference types="@vueuse/nuxt" />
 /// <reference types="@nuxt/image" />
-/// <reference types="@vite-pwa/nuxt" />
-/// <reference types="@nuxtjs/robots" />
 /// <reference types="@nuxtjs/sitemap" />
+/// <reference types="@nuxtjs/robots" />
 /// <reference types="@nuxt/eslint" />
-/// <reference types="@nuxt/devtools" />
+/// <reference types="@vite-pwa/nuxt" />
 /// <reference types="@nuxt/telemetry" />
+/// <reference types="@nuxt/devtools" />
 /// <reference path="types/nitro-layouts.d.ts" />
 /// <reference path="types/modules.d.ts" />
 /// <reference path="types/runtime-config.d.ts" />
@@ -23,7 +23,7 @@
 /// <reference path="types/nuxt-robots-nitro.d.ts" />
 /// <reference path="types/nuxt-sitemap-augments.d.ts" />
 /// <reference path="eslint-typegen.d.ts" />
-/// <reference path="types/middleware.d.ts" />
+/// <reference path="types/nitro-middleware.d.ts" />
 /// <reference path="schema/nuxt.schema.d.ts" />
 
 export {}

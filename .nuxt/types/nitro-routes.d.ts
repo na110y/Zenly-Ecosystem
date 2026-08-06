@@ -3,6 +3,66 @@ import type { Serialize, Simplify } from "nitropack/types";
 declare module "nitropack/types" {
   type Awaited<T> = T extends PromiseLike<infer U> ? Awaited<U> : T
   interface InternalApi {
+    '/api/admin/login': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/admin/login.post').default>>>>
+    }
+    '/api/admin/login/totp': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/admin/login/totp.post').default>>>>
+    }
+    '/api/admin/totp/activate': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/admin/totp/activate.post').default>>>>
+    }
+    '/api/admin/totp/setup': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/admin/totp/setup.post').default>>>>
+    }
+    '/api/public/health': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/public/health.get').default>>>>
+    }
+    '/api/system/admins/:id': {
+      'patch': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/system/admins/[id].patch').default>>>>
+    }
+    '/api/system/admins': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/system/admins/index.get').default>>>>
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/system/admins/index.post').default>>>>
+    }
+    '/api/system/feature-flags/:key': {
+      'patch': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/system/feature-flags/[key].patch').default>>>>
+    }
+    '/api/system/feature-flags': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/system/feature-flags/index.get').default>>>>
+    }
+    '/api/system/whoami': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/system/whoami.get').default>>>>
+    }
+    '/api/user/login': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/login.post').default>>>>
+    }
+    '/api/user/logout': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/logout.post').default>>>>
+    }
+    '/api/user/me': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/me.get').default>>>>
+    }
+    '/api/user/notification-preferences': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/notification-preferences.get').default>>>>
+      'patch': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/notification-preferences.patch').default>>>>
+    }
+    '/api/user/password/forgot': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/password/forgot.post').default>>>>
+    }
+    '/api/user/password/reset': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/password/reset.post').default>>>>
+    }
+    '/api/user/profile': {
+      'get': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/profile.get').default>>>>
+      'patch': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/profile.patch').default>>>>
+    }
+    '/api/user/register': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/register.post').default>>>>
+    }
+    '/api/user/register/verify-email': {
+      'post': Simplify<Serialize<Awaited<ReturnType<typeof import('../../server/api/user/register/verify-email.post').default>>>>
+    }
     '/__nuxt_error': {
       'default': Simplify<Serialize<Awaited<ReturnType<typeof import('../../node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/handlers/renderer').default>>>>
     }

@@ -1,4 +1,5 @@
 declare global {
+  const ERROR_CODES: typeof import('../../server/utils/error-envelope').ERROR_CODES
   const H3Error: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').H3Error
   const H3Event: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').H3Event
   const __buildAssetsURL: typeof import('../../node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/paths').buildAssetsURL
@@ -19,6 +20,7 @@ declare global {
   const createApp: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').createApp
   const createAppEventHandler: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').createAppEventHandler
   const createError: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').createError
+  const createErrorEnvelope: typeof import('../../server/utils/error-envelope').createErrorEnvelope
   const createEvent: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').createEvent
   const createEventStream: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').createEventStream
   const createRouter: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').createRouter
@@ -48,6 +50,7 @@ declare global {
   const fromNodeMiddleware: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').fromNodeMiddleware
   const fromPlainHandler: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').fromPlainHandler
   const fromWebHandler: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').fromWebHandler
+  const generateRequestId: typeof import('../../server/utils/request-context').generateRequestId
   const getBotDetection: typeof import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getBotDetection').getBotDetection
   const getBotInfo: typeof import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getBotDetection').getBotInfo
   const getCookie: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getCookie
@@ -63,6 +66,7 @@ declare global {
   const getRequestHeaders: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getRequestHeaders
   const getRequestHost: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getRequestHost
   const getRequestIP: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getRequestIP
+  const getRequestId: typeof import('../../server/utils/request-context').getRequestId
   const getRequestPath: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getRequestPath
   const getRequestProtocol: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getRequestProtocol
   const getRequestURL: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').getRequestURL
@@ -119,6 +123,7 @@ declare global {
   const setCookie: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').setCookie
   const setHeader: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').setHeader
   const setHeaders: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').setHeaders
+  const setRequestId: typeof import('../../server/utils/request-context').setRequestId
   const setResponseHeader: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').setResponseHeader
   const setResponseHeaders: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').setResponseHeaders
   const setResponseStatus: typeof import('../../node_modules/.pnpm/h3@1.15.11/node_modules/h3/dist/index').setResponseStatus
@@ -153,6 +158,9 @@ declare global {
   // @ts-ignore
   export type { BotDetectionContext } from '../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getBotDetection.d'
   import('../../node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getBotDetection.d')
+  // @ts-ignore
+  export type { ErrorCode, ErrorEnvelope } from '../../server/utils/error-envelope'
+  import('../../server/utils/error-envelope')
 }
 export { H3Event, H3Error, appendCorsHeaders, appendCorsPreflightHeaders, appendHeader, appendHeaders, appendResponseHeader, appendResponseHeaders, assertMethod, callNodeListener, clearResponseHeaders, clearSession, createApp, createAppEventHandler, createError, createEvent, createEventStream, createRouter, defaultContentType, defineEventHandler, defineLazyEventHandler, defineNodeListener, defineNodeMiddleware, defineRequestMiddleware, defineResponseMiddleware, defineWebSocket, defineWebSocketHandler, deleteCookie, dynamicEventHandler, eventHandler, fetchWithEvent, fromNodeMiddleware, fromPlainHandler, fromWebHandler, getCookie, getHeader, getHeaders, getMethod, getProxyRequestHeaders, getQuery, getRequestFingerprint, getRequestHeader, getRequestHeaders, getRequestHost, getRequestIP, getRequestPath, getRequestProtocol, getRequestURL, getRequestWebStream, getResponseHeader, getResponseHeaders, getResponseStatus, getResponseStatusText, getRouterParam, getRouterParams, getSession, getValidatedQuery, getValidatedRouterParams, handleCacheHeaders, handleCors, isCorsOriginAllowed, isError, isEvent, isEventHandler, isMethod, isPreflightRequest, isStream, isWebResponse, lazyEventHandler, parseCookies, promisifyNodeListener, proxyRequest, readBody, readFormData, readMultipartFormData, readRawBody, readValidatedBody, removeResponseHeader, sanitizeStatusCode, sanitizeStatusMessage, sealSession, send, sendError, sendIterable, sendNoContent, sendProxy, sendRedirect, sendStream, sendWebResponse, serveStatic, setCookie, setHeader, setHeaders, setResponseHeader, setResponseHeaders, setResponseStatus, splitCookiesString, toEventHandler, toNodeListener, toPlainHandler, toWebHandler, toWebRequest, unsealSession, updateSession, useBase, useSession, writeEarlyHints } from 'h3';
 export { useNitroApp } from 'nitropack/runtime/internal/app';
@@ -166,20 +174,22 @@ export { getRouteRules } from 'nitropack/runtime/internal/route-rules';
 export { useEvent } from 'nitropack/runtime/internal/context';
 export { defineTask, runTask } from 'nitropack/runtime/internal/task';
 export { defineNitroErrorHandler } from 'nitropack/runtime/internal/error/utils';
-export { buildAssetsURL as __buildAssetsURL, publicAssetsURL as __publicAssetsURL } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/paths';
-export { defineAppConfig } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/config';
-export { useAppConfig } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/app-config';
-export { useImage } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+image@2.1.0_@types+no_63fec7aec594e3e788649830a1eb4cae/node_modules/@nuxt/image/dist/runtime/server/utils/image';
-export { defineSitemapEventHandler } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/composables/defineSitemapEventHandler';
-export { asSitemapUrl } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/composables/asSitemapUrl';
-export { getSiteRouteRules } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getRouteRules';
-export { getNitroOrigin } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getNitroOrigin';
-export { getSiteConfig } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getSiteConfig';
-export { getSiteIndexable } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getSiteIndexable';
-export { updateSiteConfig } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/updateSiteConfig';
-export { useNitroOrigin } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/useNitroOrigin';
-export { createSitePathResolver, withSiteTrailingSlash, withSiteUrl } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/utils';
-export { getBotDetection, isBot, getBotInfo } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getBotDetection';
-export { getPathRobotConfig } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getPathRobotConfig';
-export { getSiteRobotConfig } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getSiteRobotConfig';
-export { useRuntimeConfigNuxtRobots } from 'C:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/useRuntimeConfigNuxtRobots';
+export { buildAssetsURL as __buildAssetsURL, publicAssetsURL as __publicAssetsURL } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/paths';
+export { defineAppConfig } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/config';
+export { useAppConfig } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+nitro-server@4.5.1_@b_68bbc24452f5c49ba4df4f588c6ebf08/node_modules/@nuxt/nitro-server/dist/runtime/utils/app-config';
+export { useImage } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxt+image@2.1.0_@types+no_63fec7aec594e3e788649830a1eb4cae/node_modules/@nuxt/image/dist/runtime/server/utils/image';
+export { defineSitemapEventHandler } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/composables/defineSitemapEventHandler';
+export { asSitemapUrl } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+sitemap@8.3.2_@nuxt_3f5ca7fc53c5f366e45c7e1ad412a7d0/node_modules/@nuxtjs/sitemap/dist/runtime/server/composables/asSitemapUrl';
+export { getSiteRouteRules } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getRouteRules';
+export { getNitroOrigin } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getNitroOrigin';
+export { getSiteConfig } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getSiteConfig';
+export { getSiteIndexable } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/getSiteIndexable';
+export { updateSiteConfig } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/updateSiteConfig';
+export { useNitroOrigin } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/useNitroOrigin';
+export { createSitePathResolver, withSiteTrailingSlash, withSiteUrl } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/server/composables/utils';
+export { getBotDetection, isBot, getBotInfo } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getBotDetection';
+export { getPathRobotConfig } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getPathRobotConfig';
+export { getSiteRobotConfig } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/getSiteRobotConfig';
+export { useRuntimeConfigNuxtRobots } from 'E:/Zenly-Ecosystem/node_modules/.pnpm/@nuxtjs+robots@6.1.3_@nuxt+_f183184aacce156553ebe3d55ed4aca8/node_modules/@nuxtjs/robots/dist/runtime/server/composables/useRuntimeConfigNuxtRobots';
+export { ERROR_CODES, createErrorEnvelope } from 'E:/Zenly-Ecosystem/server/utils/error-envelope';
+export { setRequestId, getRequestId, generateRequestId } from 'E:/Zenly-Ecosystem/server/utils/request-context';

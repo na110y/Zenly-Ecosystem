@@ -4,7 +4,7 @@ import { defineConfig } from 'prisma/config'
 export default defineConfig({
   earlyAccess: true,
   schema: path.join('prisma', 'schema.prisma'),
-  migrate: {
-    url: process.env.DATABASE_URL ?? 'postgresql://zenly:change_me@localhost:5432/zenly',
+  datasource: {
+    url: process.env.DATABASE_URL,
   },
 })

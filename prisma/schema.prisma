@@ -1,7 +1,181 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pgcrypto]
+}
+
+enum FeatureFlagScope {
+  SUPER_ADMIN_ONLY
+  ADMIN_MANAGEABLE
+}
+
+model FeatureFlag {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key              String           @unique
+  enabled          Boolean          @default(false)
+  scope            FeatureFlagScope
+  version          Int              @default(1)
+  updatedByAdminId String?          @db.Uuid
+  updatedAt        DateTime         @updatedAt @db.Timestamptz
+  updatedByAdmin   AdminAccount?    @relation(fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+}
+
+model SystemSetting {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  key              String        @unique
+  value            Json
+  version          Int           @default(1)
+  updatedByAdminId String?       @db.Uuid
+  updatedAt        DateTime      @updatedAt @db.Timestamptz
+  updatedByAdmin   AdminAccount? @relation(fields: [updatedByAdminId], references: [id], onDelete: SetNull)
+}
+
+enum UserStatus {
+  REGISTERED
+  EMAIL_VERIFIED
+  ACTIVE
+  SUSPENDED
+}
+
+model User {
+  id                      String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String                      @unique
+  passwordHash            String
+  displayName             String
+  status                  UserStatus                  @default(REGISTERED)
+  emailVerifiedAt         DateTime?                   @db.Timestamptz
+  createdAt               DateTime                    @default(now()) @db.Timestamptz
+  updatedAt               DateTime                    @updatedAt @db.Timestamptz
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  sessions                UserSession[]
+  notificationPreference  UserNotificationPreference?
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime  @db.Timestamptz
+  consumedAt DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId     String    @db.Uuid
+  tokenHash  String    @unique
+  expiresAt  DateTime  @db.Timestamptz
+  consumedAt DateTime? @db.Timestamptz
+  createdAt  DateTime  @default(now()) @db.Timestamptz
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model UserSession {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  userAgent String?
+  ipHash    String?
+  expiresAt DateTime  @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model UserNotificationPreference {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String   @unique @db.Uuid
+  newStoriesEmail  Boolean  @default(false)
+  newChaptersEmail Boolean  @default(false)
+  webPushEnabled   Boolean  @default(false)
+  updatedAt        DateTime @updatedAt @db.Timestamptz
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum AdminStatus {
+  ACTIVE
+  DISABLED
+}
+
+model AdminAccount {
+  id              String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String                  @unique
+  passwordHash    String
+  role            AdminRole
+  status          AdminStatus             @default(ACTIVE)
+  createdAt       DateTime                @default(now()) @db.Timestamptz
+  updatedAt       DateTime                @updatedAt @db.Timestamptz
+  totpCredential  AdminTotpCredential?
+  recoveryCodes   AdminTotpRecoveryCode[]
+  sessions        AdminSession[]
+  auditLogs       AdminAuditLog[]
+  updatedFlags    FeatureFlag[]
+  updatedSettings SystemSetting[]
+}
+
+model AdminTotpCredential {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminAccountId  String       @unique @db.Uuid
+  secretEncrypted String
+  activatedAt     DateTime?    @db.Timestamptz
+  createdAt       DateTime     @default(now()) @db.Timestamptz
+  adminAccount    AdminAccount @relation(fields: [adminAccountId], references: [id], onDelete: Cascade)
+}
+
+model AdminTotpRecoveryCode {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminAccountId String       @db.Uuid
+  codeHash       String
+  usedAt         DateTime?    @db.Timestamptz
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  adminAccount   AdminAccount @relation(fields: [adminAccountId], references: [id], onDelete: Cascade)
+
+  @@index([adminAccountId])
+}
+
+model AdminSession {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminAccountId String       @db.Uuid
+  tokenHash      String       @unique
+  totpVerifiedAt DateTime?    @db.Timestamptz
+  expiresAt      DateTime     @db.Timestamptz
+  revokedAt      DateTime?    @db.Timestamptz
+  createdAt      DateTime     @default(now()) @db.Timestamptz
+  adminAccount   AdminAccount @relation(fields: [adminAccountId], references: [id], onDelete: Cascade)
+
+  @@index([adminAccountId])
+  @@index([expiresAt])
+}
+
+model AdminAuditLog {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminAccountId String?       @db.Uuid
+  action         String
+  targetType     String
+  targetId       String?
+  beforeValue    Json?
+  afterValue     Json?
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  adminAccount   AdminAccount? @relation(fields: [adminAccountId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
 }

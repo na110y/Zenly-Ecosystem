@@ -1,5 +1,6 @@
-import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};import { getCurrentScope, ref, watchEffect, getCurrentInstance, onBeforeUnmount, onDeactivated, onActivated, createApp, provide, onErrorCaptured, onServerPrefetch, unref, createVNode, resolveDynamicComponent, shallowReactive, reactive, effectScope, hasInjectionContext, inject, defineAsyncComponent, mergeProps, toRef, computed, defineComponent, h, isReadonly, createElementBlock, shallowRef, cloneVNode, useSSRContext, isRef, isShallow, isReactive, toRaw, resolveComponent, toValue, nextTick, queuePostFlushCb } from 'vue';
-import { h as createError, $ as $fetch, m as baseURL, n as isEqual, o as stringifyParsedURL, q as stringifyQuery, v as parseQuery, w as hasProtocol, j as joinURL, x as defu, y as withQuery, z as sanitizeStatusCode, A as parseURL, e as encodePath, B as decodePath, C as isScriptProtocol, D as withTrailingSlash, E as withoutTrailingSlash } from '../_/nitro.mjs';
+import process from 'node:process';globalThis._importMeta_=globalThis._importMeta_||{url:"file:///_entry.js",env:process.env};import { getCurrentScope, ref, watchEffect, getCurrentInstance, onBeforeUnmount, onDeactivated, onActivated, shallowReactive, reactive, effectScope, hasInjectionContext, createApp, provide, onErrorCaptured, onServerPrefetch, unref, createVNode, resolveDynamicComponent, inject, defineAsyncComponent, mergeProps, toRef, shallowRef, isReadonly, defineComponent, createElementBlock, cloneVNode, h, useSSRContext, isRef, isShallow, isReactive, toRaw, isVNode, createCommentVNode, Suspense, Fragment, resolveComponent, computed, toValue, nextTick, queuePostFlushCb } from 'vue';
+import { e as createError, $ as $fetch, H as baseURL, I as hasProtocol, E as joinURL, J as withQuery, K as sanitizeStatusCode, M as parseURL, w as encodePath, N as decodePath, O as defu, P as parseQuery, Q as isScriptProtocol, R as withTrailingSlash, S as withoutTrailingSlash } from '../_/nitro.mjs';
+import { createMemoryHistory, createRouter, START_LOCATION, RouterView } from 'vue-router';
 import { ssrRenderSuspense, ssrRenderComponent, ssrRenderVNode, ssrRenderAttrs } from 'vue/server-renderer';
 import { walkResolver } from 'unhead/utils';
 import { i as injectHead$1, V as VueResolver, h as headSymbol } from '../routes/renderer.mjs';
@@ -301,150 +302,23 @@ const defaultNamespace = _globalThis[globalKey] || (_globalThis[globalKey] = cre
 const getContext = (key, opts = {}) => defaultNamespace.get(key, opts);
 const asyncHandlersKey = "__unctx_async_handlers__";
 const asyncHandlers = _globalThis[asyncHandlersKey] || (_globalThis[asyncHandlersKey] = /* @__PURE__ */ new Set());
-
-//#region src/index.ts
-/**
-* Compute the 64-bit FNV-1a hash of a string as two 32-bit lanes.
-*
-* This is the fast core: no BigInt, no allocations, plain `Math.imul`-free
-* 32-bit arithmetic. Prefer {@link fnv1a64Hex} or {@link fnv1a64Base36} for a
-* usable key; use this directly only when you want to avoid string formatting.
-*
-* The hash is computed over UTF-16 code units (`str.charCodeAt(i)`), not UTF-8
-* bytes. For ASCII input this matches a canonical FNV-1a-64; for non-ASCII it
-* does not. See the README for details.
-*
-* @param str - The string to hash.
-* @returns The `{ high, low }` 32-bit lanes of the 64-bit hash.
-*/
-function fnv1a64(str) {
-	const len = str.length;
-	let i = 0;
-	let t0 = 0;
-	let v0 = 8997;
-	let t1 = 0;
-	let v1 = 33826;
-	let t2 = 0;
-	let v2 = 40164;
-	let t3 = 0;
-	let v3 = 52210;
-	while (i < len) {
-		v0 ^= str.charCodeAt(i++);
-		t0 = v0 * 435;
-		t1 = v1 * 435;
-		t2 = v2 * 435;
-		t3 = v3 * 435;
-		t2 += v0 << 8;
-		t3 += v1 << 8;
-		t1 += t0 >>> 16;
-		v0 = t0 & 65535;
-		t2 += t1 >>> 16;
-		v1 = t1 & 65535;
-		v3 = t3 + (t2 >>> 16) & 65535;
-		v2 = t2 & 65535;
+function executeAsync(function_) {
+	const restores = [];
+	for (const leaveHandler of asyncHandlers) {
+		const restore = leaveHandler();
+		if (restore) restores.push(restore);
 	}
-	return {
-		high: (v3 << 16 | v2) >>> 0,
-		low: (v1 << 16 | v0) >>> 0
+	const restore = () => {
+		for (const restore of restores) restore();
 	};
-}
-/**
-* Compute the 64-bit FNV-1a hash of a string as a `bigint`.
-*
-* Ergonomic and comparable, at the cost of composing the two lanes into a
-* `bigint`. For a compact string key, prefer {@link fnv1a64Base36}.
-*
-* @param str - The string to hash.
-* @returns The 64-bit hash as an unsigned `bigint`.
-*/
-function fnv1a64BigInt(str) {
-	const { high, low } = fnv1a64(str);
-	return BigInt(high) << 32n | BigInt(low);
-}
-const hexDigits = "0123456789abcdef";
-/**
-* Every byte value rendered as its two hex digits, so a 32-bit lane formats in
-* 4 lookups instead of `toString(16)` plus a `padStart`. Leading zeros are
-* intrinsic to the table, which is what makes the padding free.
-*/
-Array.from({ length: 256 }, (_, i) => hexDigits.charAt(i >> 4) + hexDigits.charAt(i & 15));
-/**
-* Compute the 64-bit FNV-1a hash of a string as a base36 string.
-*
-* This is the shortest textual form (up to 13 characters) and is ideal for
-* cache keys. The length varies with the value; it is not zero-padded. Equal
-* inputs always produce identical strings.
-*
-* @param str - The string to hash.
-* @returns A base36 string of the 64-bit hash.
-*/
-function fnv1a64Base36(str) {
-	return fnv1a64BigInt(str).toString(36);
+	let awaitable = function_();
+	if (awaitable && typeof awaitable === "object" && "catch" in awaitable) awaitable = awaitable.catch((error) => {
+		restore();
+		throw error;
+	});
+	return [awaitable, restore];
 }
 
-function walk(input, seen) {
-	if (input === null) return "L";
-	let out, i = 0, keys = input, tmp = typeof input;
-	if (tmp !== "object") {
-		if (tmp === "number") return input - input === 0 ? "n" + input : "L";
-		if (tmp === "string") return "s" + input;
-		if (tmp === "bigint") return "n" + input;
-		if (tmp === "boolean") return input ? "T" : "F";
-		return;
-	}
-	let is_arr = Array.isArray(input);
-	if (!is_arr) {
-		if (input instanceof Date) return "d" + +input;
-		if (input instanceof RegExp) return "r" + input.source + input.flags;
-	}
-	tmp = seen.indexOf(input);
-	if (~tmp) return "~" + (tmp + 1);
-	if (typeof input.toJSON === "function" && !ArrayBuffer.isView(input)) {
-		input = input.toJSON();
-		if (input === null || typeof input !== "object") return walk(input, seen);
-		tmp = seen.indexOf(input);
-		if (~tmp) return "~" + (tmp + 1);
-		is_arr = Array.isArray(input);
-	}
-	seen.push(keys);
-	if (is_arr) {
-		for (out = "a"; i < input.length; out += (tmp = walk(input[i++], seen)) === undefined ? "L" : tmp);
-	} else if (input instanceof Set) {
-		out = "e";
-		for (let value of input) out += (tmp = walk(value, seen)) === undefined ? "L" : tmp;
-	} else if (input instanceof Map) {
-		keys = [...input.keys()];
-		if (keys.length > 1) keys.sort();
-		for (out = "o"; i < keys.length; i++) {
-			if ((tmp = walk(input.get(keys[i]), seen)) !== undefined) out += keys[i] + tmp;
-		}
-	} else if (input[Symbol.toStringTag] === undefined || ArrayBuffer.isView(input)) {
-		keys = Object.keys(input);
-		if (keys.length > 1) keys.sort();
-		for (out = "o"; i < keys.length; i++) {
-			if ((tmp = walk(input[keys[i]], seen)) !== undefined) out += keys[i] + tmp;
-		}
-	} else {
-		throw new Error("Unsupported value");
-	}
-	seen.pop();
-	return out;
-}
-/**
-* Canonicalize a value into a stable identity string. Two structurally-equal
-* inputs return the same id, regardless of key order.
-*
-* @example
-* ```ts
-* identify({ a: 1, b: 2 }) === identify({ b: 2, a: 1 }); // true
-* ```
-*/
-function identify(input) {
-	return walk(input, []) ?? "U";
-}
-
-//#region \0rolldown/runtime.js
-var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod), cb = null), mod.exports);
 var captureStackTrace = Error.captureStackTrace;
 var Diagnostic = class Diagnostic extends Error {
 	name;
@@ -763,11 +637,156 @@ function useRuntimeConfig(_event) {
 function defineGetter(obj, key, val) {
 	Object.defineProperty(obj, key, { get: () => val });
 }
+
+//#region src/index.ts
+/**
+* Compute the 64-bit FNV-1a hash of a string as two 32-bit lanes.
+*
+* This is the fast core: no BigInt, no allocations, plain `Math.imul`-free
+* 32-bit arithmetic. Prefer {@link fnv1a64Hex} or {@link fnv1a64Base36} for a
+* usable key; use this directly only when you want to avoid string formatting.
+*
+* The hash is computed over UTF-16 code units (`str.charCodeAt(i)`), not UTF-8
+* bytes. For ASCII input this matches a canonical FNV-1a-64; for non-ASCII it
+* does not. See the README for details.
+*
+* @param str - The string to hash.
+* @returns The `{ high, low }` 32-bit lanes of the 64-bit hash.
+*/
+function fnv1a64(str) {
+	const len = str.length;
+	let i = 0;
+	let t0 = 0;
+	let v0 = 8997;
+	let t1 = 0;
+	let v1 = 33826;
+	let t2 = 0;
+	let v2 = 40164;
+	let t3 = 0;
+	let v3 = 52210;
+	while (i < len) {
+		v0 ^= str.charCodeAt(i++);
+		t0 = v0 * 435;
+		t1 = v1 * 435;
+		t2 = v2 * 435;
+		t3 = v3 * 435;
+		t2 += v0 << 8;
+		t3 += v1 << 8;
+		t1 += t0 >>> 16;
+		v0 = t0 & 65535;
+		t2 += t1 >>> 16;
+		v1 = t1 & 65535;
+		v3 = t3 + (t2 >>> 16) & 65535;
+		v2 = t2 & 65535;
+	}
+	return {
+		high: (v3 << 16 | v2) >>> 0,
+		low: (v1 << 16 | v0) >>> 0
+	};
+}
+/**
+* Compute the 64-bit FNV-1a hash of a string as a `bigint`.
+*
+* Ergonomic and comparable, at the cost of composing the two lanes into a
+* `bigint`. For a compact string key, prefer {@link fnv1a64Base36}.
+*
+* @param str - The string to hash.
+* @returns The 64-bit hash as an unsigned `bigint`.
+*/
+function fnv1a64BigInt(str) {
+	const { high, low } = fnv1a64(str);
+	return BigInt(high) << 32n | BigInt(low);
+}
+const hexDigits = "0123456789abcdef";
+/**
+* Every byte value rendered as its two hex digits, so a 32-bit lane formats in
+* 4 lookups instead of `toString(16)` plus a `padStart`. Leading zeros are
+* intrinsic to the table, which is what makes the padding free.
+*/
+Array.from({ length: 256 }, (_, i) => hexDigits.charAt(i >> 4) + hexDigits.charAt(i & 15));
+/**
+* Compute the 64-bit FNV-1a hash of a string as a base36 string.
+*
+* This is the shortest textual form (up to 13 characters) and is ideal for
+* cache keys. The length varies with the value; it is not zero-padded. Equal
+* inputs always produce identical strings.
+*
+* @param str - The string to hash.
+* @returns A base36 string of the 64-bit hash.
+*/
+function fnv1a64Base36(str) {
+	return fnv1a64BigInt(str).toString(36);
+}
+
+function walk(input, seen) {
+	if (input === null) return "L";
+	let out, i = 0, keys = input, tmp = typeof input;
+	if (tmp !== "object") {
+		if (tmp === "number") return input - input === 0 ? "n" + input : "L";
+		if (tmp === "string") return "s" + input;
+		if (tmp === "bigint") return "n" + input;
+		if (tmp === "boolean") return input ? "T" : "F";
+		return;
+	}
+	let is_arr = Array.isArray(input);
+	if (!is_arr) {
+		if (input instanceof Date) return "d" + +input;
+		if (input instanceof RegExp) return "r" + input.source + input.flags;
+	}
+	tmp = seen.indexOf(input);
+	if (~tmp) return "~" + (tmp + 1);
+	if (typeof input.toJSON === "function" && !ArrayBuffer.isView(input)) {
+		input = input.toJSON();
+		if (input === null || typeof input !== "object") return walk(input, seen);
+		tmp = seen.indexOf(input);
+		if (~tmp) return "~" + (tmp + 1);
+		is_arr = Array.isArray(input);
+	}
+	seen.push(keys);
+	if (is_arr) {
+		for (out = "a"; i < input.length; out += (tmp = walk(input[i++], seen)) === undefined ? "L" : tmp);
+	} else if (input instanceof Set) {
+		out = "e";
+		for (let value of input) out += (tmp = walk(value, seen)) === undefined ? "L" : tmp;
+	} else if (input instanceof Map) {
+		keys = [...input.keys()];
+		if (keys.length > 1) keys.sort();
+		for (out = "o"; i < keys.length; i++) {
+			if ((tmp = walk(input.get(keys[i]), seen)) !== undefined) out += keys[i] + tmp;
+		}
+	} else if (input[Symbol.toStringTag] === undefined || ArrayBuffer.isView(input)) {
+		keys = Object.keys(input);
+		if (keys.length > 1) keys.sort();
+		for (out = "o"; i < keys.length; i++) {
+			if ((tmp = walk(input[keys[i]], seen)) !== undefined) out += keys[i] + tmp;
+		}
+	} else {
+		throw new Error("Unsupported value");
+	}
+	seen.pop();
+	return out;
+}
+/**
+* Canonicalize a value into a stable identity string. Two structurally-equal
+* inputs return the same id, regardless of key order.
+*
+* @example
+* ```ts
+* identify({ a: 1, b: 2 }) === identify({ b: 2, a: 1 }); // true
+* ```
+*/
+function identify(input) {
+	return walk(input, []) ?? "U";
+}
+
+//#region \0rolldown/runtime.js
+var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod), cb = null), mod.exports);
 //#endregion
 //#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/utils.js
 globalThis._importMeta_.url.replace(/\/app\/.*$/, "/");
 //#endregion
 //#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/injections.js
+var LayoutMetaSymbol = Symbol("layout-meta");
 var PageRouteSymbol = Symbol("route");
 //#endregion
 //#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/diagnostics/navigation.js
@@ -800,7 +819,7 @@ function isScopeWithinInstance(instance) {
 	return false;
 }
 /** @since 3.0.0 */
-var useRoute = (() => {
+var useRoute$1 = (() => {
 	if (hasInjectionContext()) {
 		const instance = getCurrentInstance();
 		if (!instance || isScopeWithinInstance(instance)) return inject(PageRouteSymbol, useNuxtApp()._route);
@@ -932,6 +951,15 @@ var showError = (error) => {
 	}
 	return nuxtError;
 };
+/**
+* Show the error page unless the current client is a crawler, in which case the
+* bot receives the already server-rendered HTML instead (#32137, #35338).
+*
+* @internal
+*/
+var _showErrorUnlessCrawler = async (nuxtApp, error) => {
+	await nuxtApp.runWithContext(() => showError(error));
+};
 /** @since 3.0.0 */
 var isNuxtError = (error) => !!error && typeof error === "object" && "__nuxt_error" in error;
 /** @since 3.0.0 */
@@ -979,7 +1007,7 @@ function freezeHead(head) {
 }
 //#endregion
 //#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/head/runtime/plugins/unhead.server.js
-var plugin$2 = /* @__PURE__ */ defineNuxtPlugin({
+var plugin$2 = defineNuxtPlugin({
 	name: "nuxt:head",
 	enforce: "pre",
 	setup(nuxtApp) {
@@ -992,6 +1020,138 @@ var plugin$2 = /* @__PURE__ */ defineNuxtPlugin({
 	}
 });
 //#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/pages/runtime/utils.js
+var ROUTE_KEY_PARENTHESES_RE$1 = /(:\w+)\([^)]+\)/g;
+var ROUTE_KEY_SYMBOLS_RE$1 = /(:\w+)[?+*]/g;
+var ROUTE_KEY_NORMAL_RE$1 = /:\w+/g;
+var interpolatePath = (route, match) => {
+	return match.path.replace(ROUTE_KEY_PARENTHESES_RE$1, "$1").replace(ROUTE_KEY_SYMBOLS_RE$1, "$1").replace(ROUTE_KEY_NORMAL_RE$1, (r) => route.params[r.slice(1)]?.toString() || "");
+};
+var generateRouteKey$1 = (routeProps, override) => {
+	const matchedRoute = routeProps.route.matched.find((m) => m.components?.default === routeProps.Component.type);
+	const source = matchedRoute?.meta.key ?? (matchedRoute && interpolatePath(routeProps.route, matchedRoute));
+	return typeof source === "function" ? source(routeProps.route) : source;
+};
+/** @since 3.9.0 */
+function toArray(value) {
+	return Array.isArray(value) ? value : [value];
+}
+//#endregion
+//#region node_modules/.pnpm/@vue+shared@3.5.40/node_modules/@vue/shared/dist/shared.cjs.prod.js
+/**
+* @vue/shared v3.5.40
+* (c) 2018-present Yuxi (Evan) You and Vue contributors
+* @license MIT
+**/
+var require_shared_cjs_prod = /* @__PURE__ */ __commonJSMin(((exports) => {
+	Object.defineProperty(exports, "__esModule", { value: true });
+	var objectToString = Object.prototype.toString;
+	var toTypeString = (value) => objectToString.call(value);
+	var isPlainObject = (val) => toTypeString(val) === "[object Object]";
+	exports.isPlainObject = isPlainObject;
+}));
+//#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/utils.js
+var ROUTE_KEY_PARENTHESES_RE = /(:\w+)\([^)]+\)/g;
+var ROUTE_KEY_SYMBOLS_RE = /(:\w+)[?+*]/g;
+var ROUTE_KEY_NORMAL_RE = /:\w+/g;
+function generateRouteKey(route) {
+	const source = route?.meta.key ?? route.path.replace(ROUTE_KEY_PARENTHESES_RE, "$1").replace(ROUTE_KEY_SYMBOLS_RE, "$1").replace(ROUTE_KEY_NORMAL_RE, (r) => route.params[r.slice(1)]?.toString() || "");
+	return typeof source === "function" ? source(route) : source;
+}
+/**
+* Utility used within router guards
+* return true if the route has been changed with a page change during navigation
+*/
+function isChangingPage(to, from) {
+	if (to === from || from === START_LOCATION) return false;
+	if (generateRouteKey(to) !== generateRouteKey(from)) return true;
+	if (to.matched.every((comp, index) => comp.components && comp.components.default === from.matched[index]?.components?.default)) return false;
+	return true;
+}
+var VALID_TAG_RE = /^[a-z][a-z0-9-]*$/i;
+/** Return `tag` if it is a safe HTML tag name, otherwise `fallback`. */
+function sanitizeTag(tag, fallback) {
+	return tag && VALID_TAG_RE.test(tag) ? tag : fallback;
+}
+//#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/pages/runtime/router.options.js
+var router_options_default = { scrollBehavior(to, from, savedPosition) {
+	const nuxtApp = useNuxtApp();
+	const router = useRouter();
+	const hashScrollBehaviour = router.options?.scrollBehaviorType ?? "auto";
+	if (to.path.replace(/\/$/, "") === from.path.replace(/\/$/, "")) {
+		if (from.hash && !to.hash) return savedPosition ?? {
+			left: 0,
+			top: 0
+		};
+		if (to.hash) return {
+			el: to.hash,
+			top: _getHashElementScrollMarginTop(to.hash),
+			behavior: hashScrollBehaviour
+		};
+		return false;
+	}
+	if ((typeof to.meta.scrollToTop === "function" ? to.meta.scrollToTop(to, from) : to.meta.scrollToTop) === false) return false;
+	if (from === START_LOCATION) return _calculatePosition(to, from, savedPosition, hashScrollBehaviour);
+	return new Promise((resolve) => {
+		const doScroll = () => {
+			requestAnimationFrame(() => {
+				if (router.currentRoute.value.fullPath !== to.fullPath) {
+					resolve(false);
+					return;
+				}
+				resolve(_calculatePosition(to, from, savedPosition, hashScrollBehaviour));
+			});
+		};
+		nuxtApp.hooks.hookOnce("page:loading:end", () => {
+			const transitionPromise = nuxtApp["~transitionPromise"];
+			if (transitionPromise) transitionPromise.then(doScroll);
+			else doScroll();
+		});
+	});
+} };
+function _getHashElementScrollMarginTop(selector) {
+	try {
+		const elem = (void 0).querySelector(selector);
+		if (elem) return (Number.parseFloat(getComputedStyle(elem).scrollMarginTop) || 0) + (Number.parseFloat(getComputedStyle((void 0).documentElement).scrollPaddingTop) || 0);
+	} catch {}
+	return 0;
+}
+function _calculatePosition(to, from, savedPosition, defaultHashScrollBehaviour) {
+	if (savedPosition) return savedPosition;
+	if (to.hash) return {
+		el: to.hash,
+		top: _getHashElementScrollMarginTop(to.hash),
+		behavior: isChangingPage(to, from) ? defaultHashScrollBehaviour : "instant"
+	};
+	return {
+		left: 0,
+		top: 0
+	};
+}
+var virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default = {
+	hashMode: false,
+	scrollBehaviorType: "auto",
+	...router_options_default
+};
+Object.assign(Object.create(null), {});
+var pageIslandRoutes = Object.assign(Object.create(null), {});
+//#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/pages/runtime/validate.js
+var middleware$1 = /* @__PURE__ */ defineNuxtRouteMiddleware(async (to) => {
+	let __temp, __restore;
+	if (!to.meta?.validate) return;
+	const result = ([__temp, __restore] = executeAsync(() => Promise.resolve(to.meta.validate(to))), __temp = await __temp, __restore(), __temp);
+	if (result === true) return;
+	return createError$1({
+		fatal: false,
+		status: result && (result.status || result.statusCode) || 404,
+		statusText: result && (result.statusText || result.statusMessage) || `Page Not Found: ${to.fullPath}`,
+		data: { path: to.fullPath }
+	});
+});
+//#endregion
 //#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/diagnostics/manifest.js
 /**
 * E5xxx
@@ -1001,9 +1161,6 @@ var manifestDiagnostics = /* #__PURE__ */ defineProdDiagnostics({
 	docsBase,
 	reporters: prodReporters
 });
-//#endregion
-//#region virtual:nuxt:node_modules%2F.cache%2Fnuxt%2F.nuxt%2Frouter.options.mjs
-var virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default = {};
 //#endregion
 //#region virtual:nuxt:node_modules%2F.cache%2Fnuxt%2F.nuxt%2Froute-rules.mjs
 var sensitiveMatcher = /* @__PURE__ */ (() => {
@@ -1037,181 +1194,222 @@ function getRouteRules(arg) {
 }
 //#endregion
 //#region virtual:nuxt:node_modules%2F.cache%2Fnuxt%2F.nuxt%2Fmiddleware.mjs
-var globalMiddleware = [/* @__PURE__ */ defineNuxtRouteMiddleware((to) => {})];
+var globalMiddleware = [middleware$1, /* @__PURE__ */ defineNuxtRouteMiddleware((to) => {})];
+var namedMiddleware = {};
 //#endregion
-//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/plugins/router.js
-function getRouteFromPath(fullPath) {
-	const route = fullPath && typeof fullPath === "object" ? fullPath : {};
-	if (typeof fullPath === "object") fullPath = stringifyParsedURL({
-		pathname: fullPath.path || "",
-		search: stringifyQuery(fullPath.query || {}),
-		hash: fullPath.hash || ""
-	});
-	const url = new URL(fullPath.toString(), "http://localhost");
-	return {
-		path: url.pathname,
-		fullPath,
-		query: parseQuery(url.search),
-		hash: url.hash,
-		params: route.params || {},
-		name: void 0,
-		matched: route.matched || [],
-		redirectedFrom: void 0,
-		meta: route.meta || {},
-		href: fullPath
-	};
-}
-var plugin$1 = /* @__PURE__ */ defineNuxtPlugin({
+//#region virtual:nuxt:node_modules%2F.cache%2Fnuxt%2F.nuxt%2Froutes.mjs
+var virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Froutes_default = [
+	{
+		name: "account-password-forgot",
+		path: "/account/password/forgot",
+		component: () => import('../build/forgot-CMB9B2sL.mjs')
+	},
+	{
+		name: "account-password-reset",
+		path: "/account/password/reset",
+		component: () => import('../build/reset-DXsGzb1I.mjs')
+	},
+	{
+		name: "account-login",
+		path: "/account/login",
+		component: () => import('../build/login-WnQRpbT6.mjs')
+	},
+	{
+		name: "account-profile",
+		path: "/account/profile",
+		component: () => import('../build/profile-D0Al1nPs.mjs')
+	},
+	{
+		name: "account-register",
+		path: "/account/register",
+		component: () => import('../build/register-CA8XwUCE.mjs')
+	},
+	{
+		name: "account-verify-email",
+		path: "/account/verify-email",
+		component: () => import('../build/verify-email-BjqOpVHg.mjs')
+	},
+	{
+		name: "system-totp-setup",
+		path: "/system/totp-setup",
+		component: () => import('../build/totp-setup-BoT8VO-d.mjs')
+	},
+	{
+		name: "index",
+		path: "/",
+		component: () => import('../build/pages-DlBGGJAC.mjs')
+	}
+];
+//#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/pages/runtime/plugins/router.js
+var plugin$1 = defineNuxtPlugin({
 	name: "nuxt:router",
 	enforce: "pre",
-	setup(nuxtApp) {
+	async setup(nuxtApp) {
+		let __temp, __restore;
+		let routerBase = useRuntimeConfig().app.baseURL;
+		const history = virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.history?.(routerBase) ?? createMemoryHistory(routerBase);
+		const routes = virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.routes ? ([__temp, __restore] = executeAsync(() => virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.routes(virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Froutes_default)), __temp = await __temp, __restore(), __temp) ?? virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Froutes_default : virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Froutes_default;
+		let startPosition;
+		const router = createRouter({
+			...virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default,
+			scrollBehavior: (to, from, savedPosition) => {
+				if (from === START_LOCATION) {
+					startPosition = savedPosition;
+					return;
+				}
+				if (virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.scrollBehavior) {
+					router.options.scrollBehavior = virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.scrollBehavior;
+					if ("scrollRestoration" in (void 0).history) {
+						const unsub = router.beforeEach(() => {
+							unsub();
+							(void 0).history.scrollRestoration = "manual";
+						});
+					}
+					return virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.scrollBehavior(to, START_LOCATION, startPosition || savedPosition);
+				}
+			},
+			history,
+			routes
+		});
+		nuxtApp.vueApp.use(router);
+		const previousRoute = shallowRef(router.currentRoute.value);
+		router.afterEach((_to, from) => {
+			previousRoute.value = from;
+		});
+		Object.defineProperty(nuxtApp.vueApp.config.globalProperties, "previousRoute", { get: () => previousRoute.value });
 		const initialURL = nuxtApp.ssrContext.url;
-		const routes = [];
-		const hooks = {
-			"navigate:before": [],
-			"resolve:before": [],
-			"navigate:after": [],
-			"error": []
+		const _route = shallowRef(router.currentRoute.value);
+		const syncCurrentRoute = () => {
+			_route.value = router.currentRoute.value;
 		};
-		const registerHook = (hook, guard) => {
-			hooks[hook].push(guard);
-			return () => {
-				const index = hooks[hook].indexOf(guard);
-				if (index !== -1) hooks[hook].splice(index, 1);
-			};
-		};
-		(/* @__PURE__ */ useRuntimeConfig()).app.baseURL;
-		const route = reactive(getRouteFromPath(initialURL));
-		let navigationCounter = 0;
-		async function handleNavigation(url, replace) {
-			const navigationId = ++navigationCounter;
-			try {
-				const to = getRouteFromPath(url);
-				for (const middleware of hooks["navigate:before"]) {
-					const result = await middleware(to, route);
-					if (navigationId !== navigationCounter) return;
-					if (result === false || result instanceof Error) return;
-					if (typeof result === "string" && result.length) return await handleNavigation(result, true);
-				}
-				for (const handler of hooks["resolve:before"]) {
-					await handler(to, route);
-					if (navigationId !== navigationCounter) return;
-				}
-				Object.assign(route, to);
-				for (const middleware of hooks["navigate:after"]) await middleware(to, route);
-			} catch (err) {
-				for (const handler of hooks.error) await handler(err);
+		router.afterEach((to, from) => {
+			const lastTo = to.matched.at(-1)?.components?.default;
+			const lastFrom = from.matched.at(-1)?.components?.default;
+			if (lastTo === lastFrom) {
+				if (generateRouteKey$1({
+					route: to,
+					Component: { type: lastTo }
+				}) === generateRouteKey$1({
+					route: from,
+					Component: { type: lastFrom }
+				})) syncCurrentRoute();
+				return;
 			}
-		}
-		const router = {
-			currentRoute: computed(() => route),
-			isReady: () => Promise.resolve(),
-			options: {},
-			install: () => Promise.resolve(),
-			push: (url) => handleNavigation(url),
-			replace: (url) => handleNavigation(url),
-			back: () => (void 0).history.go(-1),
-			go: (delta) => (void 0).history.go(delta),
-			forward: () => (void 0).history.go(1),
-			beforeResolve: (guard) => registerHook("resolve:before", guard),
-			beforeEach: (guard) => registerHook("navigate:before", guard),
-			afterEach: (guard) => registerHook("navigate:after", guard),
-			onError: (handler) => registerHook("error", handler),
-			resolve: getRouteFromPath,
-			addRoute: (parentName, route) => {
-				routes.push(route);
-			},
-			getRoutes: () => routes,
-			hasRoute: (name) => routes.some((route) => route.name === name),
-			removeRoute: (name) => {
-				const index = routes.findIndex((route) => route.name === name);
-				if (index !== -1) routes.splice(index, 1);
-			}
-		};
-		nuxtApp.vueApp.component("RouterLink", defineComponent({
-			functional: true,
-			props: {
-				to: {
-					type: String,
-					required: true
-				},
-				custom: Boolean,
-				replace: Boolean,
-				activeClass: String,
-				exactActiveClass: String,
-				ariaCurrentValue: String
-			},
-			setup: (props, { slots }) => {
-				const navigate = () => handleNavigation(props.to, props.replace);
-				return () => {
-					const route = router.resolve(props.to);
-					return props.custom ? slots.default?.({
-						href: props.to,
-						navigate,
-						route
-					}) : h("a", {
-						href: props.to,
-						onClick: (e) => {
-							e.preventDefault();
-							return navigate();
-						}
-					}, slots);
-				};
-			}
-		}));
-		nuxtApp._route = route;
+			if (to.matched.length < from.matched.length && to.matched.every((m, i) => m.components?.default === from.matched[i]?.components?.default)) syncCurrentRoute();
+		});
+		const route = { sync: syncCurrentRoute };
+		for (const key in _route.value) Object.defineProperty(route, key, {
+			get: () => _route.value[key],
+			enumerable: true
+		});
+		nuxtApp._route = shallowReactive(route);
 		nuxtApp._middleware ||= {
 			global: [],
 			named: {}
 		};
+		const error = /* @__PURE__ */ useError();
+		const isServerPage = nuxtApp.ssrContext?.islandContext?.name?.startsWith("page_");
+		if (!nuxtApp.ssrContext?.islandContext || isServerPage) router.afterEach(async (to, _from, failure) => {
+			delete nuxtApp._processingMiddleware;
+			delete nuxtApp._middlewareTo;
+			if (failure) await nuxtApp.callHook("page:loading:end");
+			if (failure?.type === 4) return;
+			if (to.redirectedFrom && to.fullPath !== initialURL) await nuxtApp.runWithContext(() => navigateTo(to.fullPath || "/"));
+		});
+		try {
+			[__temp, __restore] = executeAsync(() => router.push(initialURL)), __temp = await __temp, __restore();
+			[__temp, __restore] = executeAsync(() => router.isReady()), await __temp, __restore();
+		} catch (error) {
+			[__temp, __restore] = executeAsync(() => _showErrorUnlessCrawler(nuxtApp, error)), await __temp, __restore();
+		}
+		const resolvedInitialRoute = router.currentRoute.value;
+		syncCurrentRoute();
+		if (nuxtApp.ssrContext?.islandContext && !isServerPage) return { provide: { router } };
 		const initialLayout = nuxtApp.payload.state._layout;
-		const initialLayoutProps = nuxtApp.payload.state._layoutProps;
-		nuxtApp.hooks.hookOnce("app:created", async () => {
-			router.beforeEach(async (to, from) => {
-				to.meta = reactive(to.meta || {});
-				if (nuxtApp.isHydrating && initialLayout && !isReadonly(to.meta.layout)) {
-					to.meta.layout = initialLayout;
-					to.meta.layoutProps = initialLayoutProps;
+		router.beforeEach(async (to, from) => {
+			await nuxtApp.callHook("page:loading:start");
+			to.meta = reactive(to.meta);
+			if (nuxtApp.isHydrating && initialLayout && !isReadonly(to.meta.layout)) to.meta.layout = initialLayout;
+			nuxtApp._processingMiddleware = true;
+			nuxtApp._middlewareTo = to;
+			if (!nuxtApp.ssrContext?.islandContext || isServerPage) {
+				const middlewareEntries = /* @__PURE__ */ new Set([...globalMiddleware, ...nuxtApp._middleware.global]);
+				for (const component of to.matched) {
+					const componentMiddleware = component.meta.middleware;
+					if (!componentMiddleware) continue;
+					for (const entry of toArray(componentMiddleware)) middlewareEntries.add(entry);
 				}
-				nuxtApp._processingMiddleware = true;
-				nuxtApp._middlewareTo = to;
-				if (!nuxtApp.ssrContext?.islandContext) {
-					const middlewareEntries = /* @__PURE__ */ new Set([...globalMiddleware, ...nuxtApp._middleware.global]);
-					const routeRules = getRouteRules({ path: to.path });
-					if (routeRules.appMiddleware) for (const key in routeRules.appMiddleware) {
-						const guard = nuxtApp._middleware.named[key];
-						if (!guard) continue;
-						if (routeRules.appMiddleware[key]) middlewareEntries.add(guard);
-						else middlewareEntries.delete(guard);
-					}
-					for (const middleware of middlewareEntries) {
+				const routeRules = getRouteRules({ path: to.path });
+				if (routeRules.appMiddleware) for (const key in routeRules.appMiddleware) if (routeRules.appMiddleware[key]) middlewareEntries.add(key);
+				else middlewareEntries.delete(key);
+				for (const entry of middlewareEntries) {
+					const middleware = typeof entry === "string" ? nuxtApp._middleware.named[entry] || await namedMiddleware[entry]?.().then((r) => r.default || r) : entry;
+					if (!middleware) throw navigationDiagnostics.NUXT_E2004({
+						entry: String(entry),
+						validMiddleware: void 0
+					});
+					try {
 						const result = await nuxtApp.runWithContext(() => middleware(to, from));
 						if (result === false || result instanceof Error) {
-							const error = result || createError({
+							const error = result || createError$1({
 								status: 404,
-								statusText: `Page Not Found: ${initialURL}`,
-								data: { path: initialURL }
+								statusText: `Page Not Found: ${initialURL}`
 							});
-							delete nuxtApp._processingMiddleware;
-							delete nuxtApp._middlewareTo;
-							return nuxtApp.runWithContext(() => showError(error));
+							await nuxtApp.runWithContext(() => showError(error));
+							return false;
 						}
 						if (result === true) continue;
-						if (result || result === false) return result;
+						if (result === false) return result;
+						if (result) {
+							if (isNuxtError(result) && result.fatal) await nuxtApp.runWithContext(() => showError(result));
+							return result;
+						}
+					} catch (err) {
+						const error = createError$1(err);
+						if (error.fatal) await nuxtApp.runWithContext(() => showError(error));
+						return error;
 					}
 				}
-			});
-			router.afterEach(() => {
-				delete nuxtApp._processingMiddleware;
-				delete nuxtApp._middlewareTo;
-			});
-			await router.replace(initialURL);
-			if (!isEqual(route.fullPath, initialURL)) await nuxtApp.runWithContext(() => navigateTo(route.fullPath));
+			}
 		});
-		return { provide: {
-			route,
-			router
-		} };
+		if (isServerPage) router.beforeResolve((to) => {
+			const expected = pageIslandRoutes[nuxtApp.ssrContext.islandContext.name];
+			const actual = to.matched.find((m) => (m.components?.default)?.__nuxt_island)?.components?.default;
+			if (!expected || expected !== actual?.__nuxt_island) {
+				nuxtApp.ssrContext["~renderResponse"] = {
+					statusCode: 400,
+					statusMessage: "Invalid island request path"
+				};
+				return false;
+			}
+		});
+		router.onError(async () => {
+			delete nuxtApp._processingMiddleware;
+			delete nuxtApp._middlewareTo;
+			await nuxtApp.callHook("page:loading:end");
+		});
+		router.afterEach((to) => {
+			if (to.matched.length === 0 && !error.value) return nuxtApp.runWithContext(() => showError(createError$1({
+				status: 404,
+				fatal: false,
+				statusText: `Page not found: ${to.fullPath}`,
+				data: { path: to.fullPath }
+			})));
+		});
+		nuxtApp.hooks.hookOnce("app:created", async () => {
+			try {
+				if ("name" in resolvedInitialRoute) resolvedInitialRoute.name = void 0;
+				await router.replace({
+					...resolvedInitialRoute,
+					force: true
+				});
+				router.options.scrollBehavior = virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Frouter_options_default.scrollBehavior;
+			} catch (error) {
+				await _showErrorUnlessCrawler(nuxtApp, error);
+			}
+		});
+		return { provide: { router } };
 	}
 });
 //#endregion
@@ -1326,27 +1524,6 @@ var ServerPlaceholder = defineComponent({
 		return createElementBlock("div");
 	}
 });
-//#endregion
-//#region node_modules/.pnpm/@vue+shared@3.5.40/node_modules/@vue/shared/dist/shared.cjs.prod.js
-/**
-* @vue/shared v3.5.40
-* (c) 2018-present Yuxi (Evan) You and Vue contributors
-* @license MIT
-**/
-var require_shared_cjs_prod = /* @__PURE__ */ __commonJSMin(((exports) => {
-	Object.defineProperty(exports, "__esModule", { value: true });
-	var objectToString = Object.prototype.toString;
-	var toTypeString = (value) => objectToString.call(value);
-	var isPlainObject = (val) => toTypeString(val) === "[object Object]";
-	exports.isPlainObject = isPlainObject;
-}));
-//#endregion
-//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/utils.js
-var VALID_TAG_RE = /^[a-z][a-z0-9-]*$/i;
-/** Return `tag` if it is a safe HTML tag name, otherwise `fallback`. */
-function sanitizeTag(tag, fallback) {
-	return tag && VALID_TAG_RE.test(tag) ? tag : fallback;
-}
 //#endregion
 //#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/client-only.js
 var clientOnlySymbol = Symbol.for("nuxt:client-only");
@@ -2103,7 +2280,7 @@ function applyTrailingSlashBehavior(to, trailingSlash) {
 }
 //#endregion
 //#region node_modules/.pnpm/nuxt-site-config@4.1.4_@nux_dad209aad9b19cf1044f30e392e64f03/node_modules/nuxt-site-config/dist/runtime/app/plugins/0.siteConfig.js
-var _0_siteConfig_default = /* @__PURE__ */ defineNuxtPlugin({
+var _0_siteConfig_default = defineNuxtPlugin({
 	name: "nuxt-site-config:init",
 	enforce: "pre",
 	async setup(nuxtApp) {
@@ -2111,7 +2288,7 @@ var _0_siteConfig_default = /* @__PURE__ */ defineNuxtPlugin({
 		const state = useState("site-config");
 		nuxtApp.hooks.hook("app:rendered", () => {
 			state.value = stack?.get({
-				debug: (/* @__PURE__ */ useRuntimeConfig())["nuxt-site-config"].debug,
+				debug: useRuntimeConfig()["nuxt-site-config"].debug,
 				resolveRefs: true
 			});
 		});
@@ -2141,8 +2318,8 @@ var virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Fplugins_server_default =
 			for (const [reducer, fn] of reducers) definePayloadReducer(reducer, fn);
 		}
 	}),
-	/* @__PURE__ */ defineNuxtPlugin({ name: "nuxt:global-components" }),
-	/* @__PURE__ */ defineNuxtPlugin({ setup() {
+	defineNuxtPlugin({ name: "nuxt:global-components" }),
+	defineNuxtPlugin({ setup() {
 		const event = useRequestEvent();
 		const ctx = event?.context?.robots;
 		event?.context?.robotsProduction;
@@ -2154,7 +2331,7 @@ var virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Fplugins_server_default =
 			"data-production-content": () => void 0
 		}] });
 	} }),
-	/* @__PURE__ */ defineNuxtPlugin(() => {
+	defineNuxtPlugin(() => {
 		return { provide: { pwaIcons: {
 			transparent: {},
 			maskable: {},
@@ -2165,6 +2342,95 @@ var virtual_nuxt_node_modules_2F_cache_2Fnuxt_2F_nuxt_2Fplugins_server_default =
 	})
 ];
 //#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/route-provider.js
+var defineRouteProvider = (name = "RouteProvider") => defineComponent({
+	name,
+	props: {
+		route: {
+			type: Object,
+			required: true
+		},
+		vnode: Object,
+		vnodeRef: Object,
+		renderKey: String,
+		trackRootNodes: Boolean
+	},
+	setup(props) {
+		const previousKey = props.renderKey;
+		const previousRoute = props.route;
+		const route = {};
+		for (const key in props.route) Object.defineProperty(route, key, {
+			get: () => previousKey === props.renderKey ? props.route[key] : previousRoute[key],
+			enumerable: true
+		});
+		provide(PageRouteSymbol, shallowReactive(route));
+		return () => {
+			if (!props.vnode) return props.vnode;
+			return h(props.vnode, { ref: props.vnodeRef });
+		};
+	}
+});
+var RouteProvider = defineRouteProvider();
+//#endregion
+//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/pages/runtime/page.js
+var page_default = defineComponent({
+	name: "NuxtPage",
+	inheritAttrs: false,
+	props: {
+		name: { type: String },
+		transition: {
+			type: [Boolean, Object],
+			default: void 0
+		},
+		keepalive: {
+			type: [Boolean, Object],
+			default: void 0
+		},
+		route: { type: Object },
+		pageKey: {
+			type: [Function, String],
+			default: null
+		}
+	},
+	setup(props, { attrs, slots, expose }) {
+		const nuxtApp = useNuxtApp();
+		const pageRef = ref();
+		inject(PageRouteSymbol, null);
+		expose({ pageRef });
+		inject(LayoutMetaSymbol, null);
+		nuxtApp.deferHydration();
+		return () => {
+			return h(RouterView, {
+				name: props.name,
+				route: props.route,
+				...attrs
+			}, { default: markStableSlot((routeProps) => {
+				return h(Suspense, { suspensible: true }, { default() {
+					return h(RouteProvider, {
+						vnode: slots.default ? normalizeSlot(slots.default, routeProps) : routeProps.Component,
+						route: routeProps.route,
+						vnodeRef: pageRef
+					});
+				} });
+			}) });
+		};
+	}
+});
+function markStableSlot(fn) {
+	const wrapped = ((routeProps) => {
+		const result = fn(routeProps);
+		if (Array.isArray(result)) return result;
+		if (result == null || !isVNode(result)) return [createCommentVNode()];
+		return [result];
+	});
+	wrapped._n = true;
+	return wrapped;
+}
+function normalizeSlot(slot, data) {
+	const slotContent = slot(data);
+	return slotContent.length === 1 ? h(slotContent[0]) : h(Fragment, void 0, slotContent);
+}
+//#endregion
 //#region \0plugin-vue:export-helper
 var _plugin_vue_export_helper_default = (sfc, props) => {
 	const target = sfc.__vccOpts || sfc;
@@ -2172,47 +2438,14 @@ var _plugin_vue_export_helper_default = (sfc, props) => {
 	return target;
 };
 //#endregion
-//#region node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/welcome.vue
-var _sfc_main$3 = {
-	__name: "NuxtWelcome",
-	__ssrInlineRender: true,
-	props: {
-		appName: {
-			type: String,
-			default: "Nuxt"
-		},
-		title: {
-			type: String,
-			default: "Welcome to Nuxt!"
-		}
-	},
-	setup(__props) {
-		useHead$1({
-			title: `${__props.title}`,
-			script: [{ innerHTML: `!function(){let e=document.createElement("link").relList;if(!(e&&e.supports&&e.supports("modulepreload"))){for(let e of document.querySelectorAll('link[rel="modulepreload"]'))r(e);new MutationObserver(e=>{for(let t of e)if("childList"===t.type)for(let e of t.addedNodes)"LINK"===e.tagName&&"modulepreload"===e.rel&&r(e)}).observe(document,{childList:!0,subtree:!0})}function r(e){if(e.ep)return;e.ep=!0;let r=function(e){let r={};return e.integrity&&(r.integrity=e.integrity),e.referrerPolicy&&(r.referrerPolicy=e.referrerPolicy),"use-credentials"===e.crossOrigin?r.credentials="include":"anonymous"===e.crossOrigin?r.credentials="omit":r.credentials="same-origin",r}(e);fetch(e.href,r)}}();` }],
-			style: [{ innerHTML: `*,:after,:before{box-sizing:border-box;border-style:solid;border-width:0;border-color:var(--un-default-border-color,#e5e7eb)}:after,:before{--un-content:""}html{-webkit-text-size-adjust:100%;tab-size:4;font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent;font-family:ui-sans-serif,system-ui,sans-serif,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol,Noto Color Emoji;line-height:1.5}body{line-height:inherit;margin:0}h1,h2{font-size:inherit;font-weight:inherit}a{color:inherit;-webkit-text-decoration:inherit;text-decoration:inherit}h1,h2,p,ul{margin:0}ul{padding:0;list-style:none}svg{vertical-align:middle;display:block}*,:after,:before{--un-rotate:0;--un-rotate-x:0;--un-rotate-y:0;--un-rotate-z:0;--un-scale-x:1;--un-scale-y:1;--un-scale-z:1;--un-skew-x:0;--un-skew-y:0;--un-translate-x:0;--un-translate-y:0;--un-translate-z:0;--un-pan-x: ;--un-pan-y: ;--un-pinch-zoom: ;--un-scroll-snap-strictness:proximity;--un-ordinal: ;--un-slashed-zero: ;--un-numeric-figure: ;--un-numeric-spacing: ;--un-numeric-fraction: ;--un-border-spacing-x:0;--un-border-spacing-y:0;--un-ring-offset-shadow:0 0 #0000;--un-ring-shadow:0 0 #0000;--un-shadow-inset: ;--un-shadow:0 0 #0000;--un-ring-inset: ;--un-ring-offset-width:0px;--un-ring-offset-color:#fff;--un-ring-width:0px;--un-ring-color:#93c5fd80;--un-blur: ;--un-brightness: ;--un-contrast: ;--un-drop-shadow: ;--un-grayscale: ;--un-hue-rotate: ;--un-invert: ;--un-saturate: ;--un-sepia: ;--un-backdrop-blur: ;--un-backdrop-brightness: ;--un-backdrop-contrast: ;--un-backdrop-grayscale: ;--un-backdrop-hue-rotate: ;--un-backdrop-invert: ;--un-backdrop-opacity: ;--un-backdrop-saturate: ;--un-backdrop-sepia: }` }]
-		});
-		return (_ctx, _push, _parent, _attrs) => {
-			_push(`<div${ssrRenderAttrs(mergeProps({ class: "antialiased bg-white dark:bg-[#020420] dark:text-white flex flex-col items-center justify-center min-h-screen place-content-center sm:text-base text-[#020420] text-sm" }, _attrs))} data-v-1dcd449a><div class="flex flex-col mt-6 sm:mt-0" data-v-1dcd449a><h1 class="flex flex-col gap-y-4 items-center justify-center" data-v-1dcd449a><a href="https://nuxt.com?utm_source=nuxt-welcome" target="_blank" class="gap-4 inline-flex items-end" data-v-1dcd449a><svg xmlns="http://www.w3.org/2000/svg" fill="none" aria-label="Nuxt" class="h-8 sm:h-12" viewBox="0 0 800 200" data-v-1dcd449a><path fill="#00dc82" d="M168.303 200h111.522c3.543 0 7.022-.924 10.09-2.679A20.1 20.1 0 0 0 297.3 190a19.86 19.86 0 0 0 2.7-10.001 19.86 19.86 0 0 0-2.709-9.998L222.396 41.429a20.1 20.1 0 0 0-7.384-7.32 20.3 20.3 0 0 0-10.088-2.679c-3.541 0-7.02.925-10.087 2.68a20.1 20.1 0 0 0-7.384 7.32l-19.15 32.896L130.86 9.998a20.1 20.1 0 0 0-7.387-7.32A20.3 20.3 0 0 0 113.384 0c-3.542 0-7.022.924-10.09 2.679a20.1 20.1 0 0 0-7.387 7.319L2.709 170A19.85 19.85 0 0 0 0 179.999c-.002 3.511.93 6.96 2.7 10.001a20.1 20.1 0 0 0 7.385 7.321A20.3 20.3 0 0 0 20.175 200h70.004c27.737 0 48.192-12.075 62.266-35.633l34.171-58.652 18.303-31.389 54.93 94.285h-73.233zm-79.265-31.421-48.854-.011 73.232-125.706 36.541 62.853-24.466 42.01c-9.347 15.285-19.965 20.854-36.453 20.854" data-v-1dcd449a></path><path fill="currentColor" d="M377 200a4 4 0 0 0 4-4v-93s5.244 8.286 15 25l38.707 66.961c1.789 3.119 5.084 5.039 8.649 5.039H470V50h-27a4 4 0 0 0-4 4v94l-17-30-36.588-62.98c-1.792-3.108-5.081-5.02-8.639-5.02H350v150zm299.203-56.143L710.551 92h-25.73a9.97 9.97 0 0 0-8.333 4.522L660.757 120.5l-15.731-23.978A9.97 9.97 0 0 0 636.693 92h-25.527l34.348 51.643L608.524 200h24.966a9.97 9.97 0 0 0 8.29-4.458l19.18-28.756 18.981 28.72a9.97 9.97 0 0 0 8.313 4.494h24.736zM724.598 92h19.714V60.071h28.251V92H800v24.857h-27.437V159.5c0 10.5 5.284 15.429 14.43 15.429H800V200h-16.869c-23.576 0-38.819-14.143-38.819-39.214v-43.929h-19.714zM590 92h-15c-3.489 0-6.218.145-8.5 2.523-2.282 2.246-2.5 3.63-2.5 7.066v52.486c0 8.058-.376 12.962-4 16.925-3.624 3.831-8.619 5-16 5-7.247 0-12.376-1.169-16-5-3.624-3.963-4-8.867-4-16.925v-52.486c0-3.435-.218-4.82-2.5-7.066C519.218 92.145 516.489 92 513 92h-15v62.422q0 21.006 11.676 33.292C517.594 195.905 529.103 200 544 200s26.204-4.095 34.123-12.286Q590 175.428 590 154.422z" data-v-1dcd449a></path></svg> <span class="bg-[#00DC42]/10 border border-[#00DC42]/50 font-mono font-semibold group-hover:bg-[#00DC42]/15 group-hover:border-[#00DC42] inline-block leading-none px-2 py-1 rounded sm:px-2.5 sm:py-1.5 sm:text-[14px] text-[#00DC82] text-[12px]" data-v-1dcd449a>4.5.0</span></a></h1><div class="gap-4 grid grid-cols-1 max-w-[980px] mt-6 px-4 sm:gap-6 sm:grid-cols-3 sm:mt-10 w-full" data-v-1dcd449a><div class="bg-gray-50/10 border border-[#00DC42]/50 dark:bg-white/5 flex flex-col gap-1 p-6 rounded-lg sm:col-span-2" data-v-1dcd449a><div class="bg-[#00DC82]/5 border border-[#00DC82] dark:bg-[#020420] dark:border-[#00DC82]/80 dark:text-[#00DC82] flex h-[32px] items-center justify-center rounded text-[#00DC82] w-[32px]" data-v-1dcd449a><svg xmlns="http://www.w3.org/2000/svg" class="size-[18px]" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="m228.1 121.2-143.9-88A8 8 0 0 0 72 40v176a8 8 0 0 0 12.2 6.8l143.9-88a7.9 7.9 0 0 0 0-13.6" opacity=".2" data-v-1dcd449a></path><path fill="currentColor" d="M80 232a15.5 15.5 0 0 1-7.8-2.1A15.8 15.8 0 0 1 64 216V40a15.8 15.8 0 0 1 8.2-13.9 15.5 15.5 0 0 1 16.1.3l144 87.9a16 16 0 0 1 0 27.4l-144 87.9A15.4 15.4 0 0 1 80 232m0-192v176l144-88Z" data-v-1dcd449a></path></svg></div><h2 class="font-semibold mt-1 text-base" data-v-1dcd449a>Get started</h2><p class="dark:text-gray-200 text-gray-700 text-sm" data-v-1dcd449a>Remove this welcome page by replacing <a class="bg-green-50 border border-green-600/10 dark:bg-[#020420] dark:border-white/10 dark:text-[#00DC82] font-bold font-mono p-1 rounded text-green-700" data-v-1dcd449a>&lt;NuxtWelcome/&gt;</a> in <a href="https://nuxt.com/docs/4.x/directory-structure/app" target="_blank" rel="noopener" class="bg-green-50 border border-green-600/20 dark:bg-[#020420] dark:border-white/20 dark:text-[#00DC82] font-bold font-mono hover:border-[#00DC82] p-1 rounded text-green-700" data-v-1dcd449a>app.vue</a> with your own code.</p></div><a href="https://nuxt.com/docs?utm_source=nuxt-welcome" target="_blank" class="bg-gray-50/10 border border-gray-200 dark:bg-white/5 dark:border-white/10 flex flex-col gap-1 group hover:border-[#00DC82] hover:dark:border-[#00DC82] p-6 relative rounded-lg transition-all" data-v-1dcd449a><div class="bg-[#00DC82]/5 border border-[#00DC82] dark:bg-[#020420] dark:border-[#00DC82]/50 dark:text-[#00DC82] flex group-hover:dark:border-[#00DC82]/80 h-[32px] items-center justify-center rounded text-[#00DC82] transition-all w-[32px]" data-v-1dcd449a><svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M136 48v128H88V80H40V48a8 8 0 0 1 8-8h32a8 8 0 0 1 8 8 8 8 0 0 1 8-8h32a8 8 0 0 1 8 8m89.9 149.6-8.3-30.9-46.4 12.5 8.3 30.9a8 8 0 0 0 9.8 5.6l30.9-8.3a8 8 0 0 0 5.7-9.8M184.5 43.1a8.1 8.1 0 0 0-9.8-5.7l-30.9 8.3a8.1 8.1 0 0 0-5.7 9.8l8.3 30.9L192.8 74Z" opacity=".2" data-v-1dcd449a></path><path fill="currentColor" d="M233.6 195.6 192.2 41a16 16 0 0 0-19.6-11.3L141.7 38l-1 .3A16 16 0 0 0 128 32H96a15.8 15.8 0 0 0-8 2.2 15.8 15.8 0 0 0-8-2.2H48a16 16 0 0 0-16 16v160a16 16 0 0 0 16 16h32a15.8 15.8 0 0 0 8-2.2 15.8 15.8 0 0 0 8 2.2h32a16 16 0 0 0 16-16v-99.6l27.8 103.7a16 16 0 0 0 15.5 11.9 20 20 0 0 0 4.1-.5l30.9-8.3a16 16 0 0 0 11.3-19.6M156.2 92.1l30.9-8.3 20.7 77.3-30.9 8.3Zm20.5-46.9 6.3 23.1-30.9 8.3-6.3-23.1ZM128 48v120H96V48Zm-48 0v24H48V48ZM48 208V88h32v120Zm80 0H96v-24h32zm90.2-8.3-30.9 8.3-6.3-23.2 31-8.3z" data-v-1dcd449a></path></svg></div> <svg xmlns="http://www.w3.org/2000/svg" class="absolute dark:text-white/40 group-hover:size-5 group-hover:text-[#00DC82] right-4 size-4 text-[#020420]/20 top-4 transition-all" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M200 64v104a8 8 0 0 1-16 0V83.3L69.7 197.7a8.2 8.2 0 0 1-11.4 0 8.1 8.1 0 0 1 0-11.4L172.7 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8" data-v-1dcd449a></path></svg> <h2 class="font-semibold mt-1 text-base" data-v-1dcd449a>Documentation</h2><p class="dark:text-gray-200 group-hover:dark:text-gray-100 text-gray-700 text-sm" data-v-1dcd449a>We highly recommend you take a look at the Nuxt documentation to level up.</p></a></div><div class="gap-4 grid grid-cols-1 max-w-[980px] mt-4 px-4 sm:gap-6 sm:grid-cols-3 sm:mt-6 w-full" data-v-1dcd449a><a href="https://nuxt.com/modules?utm_source=nuxt-welcome" target="_blank" class="bg-gray-50/10 border border-gray-200 dark:bg-white/5 dark:border-white/10 flex flex-col gap-1 group hover:border-[#00DC82] hover:dark:border-[#00DC82] p-6 relative rounded-lg transition-all" data-v-1dcd449a><div class="bg-[#00DC82]/5 border border-[#00DC82] dark:bg-[#020420] dark:border-[#00DC82]/50 dark:text-[#00DC82] flex group-hover:dark:border-[#00DC82]/80 h-[32px] items-center justify-center rounded text-[#00DC82] transition-all w-[32px]" data-v-1dcd449a><svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M64 216a8 8 0 0 1-8-8v-42.7a27.6 27.6 0 0 1-14.1 2.6A28 28 0 1 1 56 114.7V72a8 8 0 0 1 8-8h46.7a27.6 27.6 0 0 1-2.6-14.1A28 28 0 1 1 161.3 64H208a8 8 0 0 1 8 8v42.7a27.6 27.6 0 0 0-14.1-2.6 28 28 0 1 0 14.1 53.2V208a8 8 0 0 1-8 8Z" opacity=".2" data-v-1dcd449a></path><path fill="currentColor" d="M220.3 158.5a8.1 8.1 0 0 0-7.7-.4 20.2 20.2 0 0 1-23.2-4.4 20 20 0 0 1 13.1-33.6 19.6 19.6 0 0 1 10.1 1.8 8.1 8.1 0 0 0 7.7-.4 8.2 8.2 0 0 0 3.7-6.8V72a16 16 0 0 0-16-16h-36.2c.1-1.3.2-2.7.2-4a36.1 36.1 0 0 0-38.3-35.9 36 36 0 0 0-33.6 33.3 36.4 36.4 0 0 0 .1 6.6H64a16 16 0 0 0-16 16v32.2l-4-.2a35.6 35.6 0 0 0-26.2 11.4 35.3 35.3 0 0 0-9.7 26.9 36 36 0 0 0 33.3 33.6 36.4 36.4 0 0 0 6.6-.1V208a16 16 0 0 0 16 16h144a16 16 0 0 0 16-16v-42.7a8.2 8.2 0 0 0-3.7-6.8M208 208H64v-42.7a8.2 8.2 0 0 0-3.7-6.8 8.1 8.1 0 0 0-7.7-.4 19.6 19.6 0 0 1-10.1 1.8 20 20 0 0 1-13.1-33.6 20.2 20.2 0 0 1 23.2-4.4 8.1 8.1 0 0 0 7.7-.4 8.2 8.2 0 0 0 3.7-6.8V72h46.7a8.2 8.2 0 0 0 6.8-3.7 8.1 8.1 0 0 0 .4-7.7 19.6 19.6 0 0 1-1.8-10.1 20 20 0 0 1 33.6-13.1 20.2 20.2 0 0 1 4.4 23.2 8.1 8.1 0 0 0 .4 7.7 8.2 8.2 0 0 0 6.8 3.7H208v32.2a36.4 36.4 0 0 0-6.6-.1 36 36 0 0 0-33.3 33.6A36.1 36.1 0 0 0 204 176l4-.2Z" data-v-1dcd449a></path></svg></div> <svg xmlns="http://www.w3.org/2000/svg" class="absolute dark:text-white/40 group-hover:size-5 group-hover:text-[#00DC82] right-4 size-4 text-[#020420]/20 top-4 transition-all" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M200 64v104a8 8 0 0 1-16 0V83.3L69.7 197.7a8.2 8.2 0 0 1-11.4 0 8.1 8.1 0 0 1 0-11.4L172.7 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8" data-v-1dcd449a></path></svg> <h2 class="font-semibold mt-1 text-base" data-v-1dcd449a>Modules</h2><p class="dark:text-gray-200 group-hover:dark:text-gray-100 text-gray-700 text-sm" data-v-1dcd449a>Discover our list of modules to supercharge your Nuxt project.</p></a> <a href="https://nuxt.com/docs/4.x/examples?utm_source=nuxt-welcome" target="_blank" class="bg-gray-50/10 border border-gray-200 dark:bg-white/5 dark:border-white/10 flex flex-col gap-1 group hover:border-[#00DC82] hover:dark:border-[#00DC82] p-6 relative rounded-lg transition-all" data-v-1dcd449a><div class="bg-[#00DC82]/5 border border-[#00DC82] dark:bg-[#020420] dark:border-[#00DC82]/50 dark:text-[#00DC82] flex group-hover:dark:border-[#00DC82]/80 h-[32px] items-center justify-center rounded text-[#00DC82] transition-all w-[32px]" data-v-1dcd449a><svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M224 56v144a8 8 0 0 1-8 8H40a8 8 0 0 1-8-8V56a8 8 0 0 1 8-8h176a8 8 0 0 1 8 8" opacity=".2" data-v-1dcd449a></path><path fill="currentColor" d="M216 40H40a16 16 0 0 0-16 16v144a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16V56a16 16 0 0 0-16-16m0 160H40V56h176zM80 84a12 12 0 1 1-12-12 12 12 0 0 1 12 12m40 0a12 12 0 1 1-12-12 12 12 0 0 1 12 12" data-v-1dcd449a></path></svg></div> <svg xmlns="http://www.w3.org/2000/svg" class="absolute dark:text-white/40 group-hover:size-5 group-hover:text-[#00DC82] right-4 size-4 text-[#020420]/20 top-4 transition-all" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M200 64v104a8 8 0 0 1-16 0V83.3L69.7 197.7a8.2 8.2 0 0 1-11.4 0 8.1 8.1 0 0 1 0-11.4L172.7 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8" data-v-1dcd449a></path></svg> <h2 class="font-semibold mt-1 text-base" data-v-1dcd449a>Examples</h2><p class="dark:text-gray-200 group-hover:dark:text-gray-100 text-gray-700 text-sm" data-v-1dcd449a>Explore different way of using Nuxt features and get inspired.</p></a> <a href="https://nuxt.com/deploy?utm_source=nuxt-welcome" target="_blank" class="bg-gray-50/10 border border-gray-200 dark:bg-white/5 dark:border-white/10 flex flex-col gap-1 group hover:border-[#00DC82] hover:dark:border-[#00DC82] p-6 relative rounded-lg transition-all" data-v-1dcd449a><div class="bg-[#00DC82]/5 border border-[#00DC82] dark:bg-[#020420] dark:border-[#00DC82]/50 dark:text-[#00DC82] flex group-hover:dark:border-[#00DC82]/80 h-[32px] items-center justify-center rounded text-[#00DC82] transition-all w-[32px]" data-v-1dcd449a><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M94.1 184.6c-11.4 33.9-56.6 33.9-56.6 33.9s0-45.2 33.9-56.6Zm90.5-67.9v64.6a8 8 0 0 1-2.4 5.6l-32.3 32.4a8 8 0 0 1-13.5-4.1l-8.4-41.9Zm-45.3-45.3H74.7a8 8 0 0 0-5.6 2.4l-32.4 32.3a8 8 0 0 0 4.1 13.5l41.9 8.4Z" opacity=".2" data-v-1dcd449a></path><path fill="currentColor" d="M96.6 177a7.9 7.9 0 0 0-10.1 5c-6.6 19.7-27.9 25.8-40.2 27.7 1.9-12.3 8-33.6 27.7-40.2a8 8 0 1 0-5.1-15.1c-16.4 5.4-28.4 18.4-34.8 37.5a91.8 91.8 0 0 0-4.6 26.6 8 8 0 0 0 8 8 91.8 91.8 0 0 0 26.6-4.6c19.1-6.4 32.1-18.4 37.5-34.8a7.9 7.9 0 0 0-5-10.1" data-v-1dcd449a></path><path fill="currentColor" d="M227.6 41.8a15.7 15.7 0 0 0-13.4-13.4c-11.3-1.7-40.6-2.5-69.2 26.1l-9 8.9H74.7a16.2 16.2 0 0 0-11.3 4.7l-32.3 32.4a15.9 15.9 0 0 0-4 15.9 16 16 0 0 0 12.2 11.1l39.5 7.9 41.8 41.8 7.9 39.5a16 16 0 0 0 11.1 12.2 14.7 14.7 0 0 0 4.6.7 15.6 15.6 0 0 0 11.3-4.7l32.4-32.3a16.2 16.2 0 0 0 4.7-11.3V120l8.9-9c28.6-28.6 27.8-57.9 26.1-69.2M74.7 79.4H120l-39.9 39.9-37.7-7.5Zm81.6-13.6c7.8-7.8 28.8-25.6 55.5-21.6 4 26.7-13.8 47.7-21.6 55.5L128 161.9 94.1 128Zm20.3 115.5-32.4 32.3-7.5-37.7 39.9-39.9Z" data-v-1dcd449a></path></svg></div> <svg xmlns="http://www.w3.org/2000/svg" class="absolute dark:text-white/40 group-hover:size-5 group-hover:text-[#00DC82] right-4 size-4 text-[#020420]/20 top-4 transition-all" viewBox="0 0 256 256" data-v-1dcd449a><path fill="currentColor" d="M200 64v104a8 8 0 0 1-16 0V83.3L69.7 197.7a8.2 8.2 0 0 1-11.4 0 8.1 8.1 0 0 1 0-11.4L172.7 72H88a8 8 0 0 1 0-16h104a8 8 0 0 1 8 8" data-v-1dcd449a></path></svg> <h2 class="font-semibold mt-1 text-base" data-v-1dcd449a>Deploy</h2><p class="dark:text-gray-200 group-hover:dark:text-gray-100 text-gray-700 text-sm" data-v-1dcd449a>Learn how to deploy your Nuxt project on different providers.</p></a></div><footer class="lg:px-8 mb-6 mt-6 mx-auto px-4 sm:mb-0 sm:mt-10 sm:px-6 w-full" data-v-1dcd449a><ul class="flex gap-4 items-center justify-center" data-v-1dcd449a><li data-v-1dcd449a><a href="https://go.nuxt.com/github" target="_blank" class="dark:hover:text-white dark:text-gray-400 focus-visible:ring-2 hover:text-[#020420] text-gray-500" data-v-1dcd449a><span class="sr-only" data-v-1dcd449a>Nuxt GitHub Repository</span> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-v-1dcd449a><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" data-v-1dcd449a></path></svg></a></li><li data-v-1dcd449a><a href="https://go.nuxt.com/discord" target="_blank" class="dark:hover:text-white dark:text-gray-400 focus-visible:ring-2 hover:text-[#020420] text-gray-500" data-v-1dcd449a><span class="sr-only" data-v-1dcd449a>Nuxt Discord Server</span> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-v-1dcd449a><path fill="currentColor" d="M20.317 4.37a19.8 19.8 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.3 18.3 0 0 0-5.487 0 13 13 0 0 0-.617-1.25.08.08 0 0 0-.079-.037A19.7 19.7 0 0 0 3.677 4.37a.1.1 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.08.08 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.08.08 0 0 0 .084-.028 14 14 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13 13 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10 10 0 0 0 .372-.292.07.07 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.07.07 0 0 1 .078.01q.181.149.373.292a.077.077 0 0 1-.006.127 12.3 12.3 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.08.08 0 0 0 .084.028 19.8 19.8 0 0 0 6.002-3.03.08.08 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.06.06 0 0 0-.031-.03M8.02 15.33c-1.182 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418m7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418" data-v-1dcd449a></path></svg></a></li><li data-v-1dcd449a><a href="https://go.nuxt.com/x" target="_blank" class="dark:hover:text-white dark:text-gray-400 focus-visible:ring-2 hover:text-[#020420] text-gray-500" data-v-1dcd449a><span class="sr-only" data-v-1dcd449a>Nuxt on X</span> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-v-1dcd449a><path fill="currentColor" d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" data-v-1dcd449a></path></svg></a></li><li data-v-1dcd449a><a href="https://go.nuxt.com/bluesky" target="_blank" class="dark:hover:text-white dark:text-gray-400 focus-visible:ring-2 hover:text-[#020420] text-gray-500" data-v-1dcd449a><span class="sr-only" data-v-1dcd449a>Nuxt Bluesky</span> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-v-1dcd449a><path fill="currentColor" d="M12 10.8c-1.087-2.114-4.046-6.053-6.798-7.995C2.566.944 1.561 1.266.902 1.565.139 1.908 0 3.08 0 3.768c0 .69.378 5.65.624 6.479.815 2.736 3.713 3.66 6.383 3.364q.204-.03.415-.056-.207.033-.415.056c-3.912.58-7.387 2.005-2.83 7.078 5.013 5.19 6.87-1.113 7.823-4.308.953 3.195 2.05 9.271 7.733 4.308 4.267-4.308 1.172-6.498-2.74-7.078a9 9 0 0 1-.415-.056q.21.026.415.056c2.67.297 5.568-.628 6.383-3.364.246-.828.624-5.79.624-6.478 0-.69-.139-1.861-.902-2.206-.659-.298-1.664-.62-4.3 1.24C16.046 4.748 13.087 8.687 12 10.8" data-v-1dcd449a></path></svg></a></li><li data-v-1dcd449a><a href="https://go.nuxt.com/linkedin" target="_blank" class="dark:hover:text-white dark:text-gray-400 focus-visible:ring-2 hover:text-[#020420] text-gray-500" data-v-1dcd449a><span class="sr-only" data-v-1dcd449a>Nuxt Linkedin</span> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-v-1dcd449a><path fill="currentColor" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.06 2.06 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065m1.782 13.019H3.555V9h3.564zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0z" data-v-1dcd449a></path></svg></a></li></ul></footer></div></div>`);
-		};
-	}
-};
-var _sfc_setup$3 = _sfc_main$3.setup;
-_sfc_main$3.setup = (props, ctx) => {
-	const ssrContext = useSSRContext();
-	(ssrContext.modules || (ssrContext.modules = /* @__PURE__ */ new Set())).add("../node_modules/.pnpm/nuxt@4.5.1_8585f377e5b29e5e74cd6c4991457219/node_modules/nuxt/dist/app/components/welcome.vue");
-	return _sfc_setup$3 ? _sfc_setup$3(props, ctx) : void 0;
-};
-var welcome_default = /*#__PURE__*/ _plugin_vue_export_helper_default(_sfc_main$3, [["__scopeId", "data-v-1dcd449a"]]);
-//#endregion
 //#region app/app.vue
 var _sfc_main$2 = {};
 function _sfc_ssrRender(_ctx, _push, _parent, _attrs) {
 	const _component_NuxtRouteAnnouncer = ServerPlaceholder;
-	const _component_NuxtWelcome = welcome_default;
+	const _component_NuxtPage = page_default;
 	_push(`<div${ssrRenderAttrs(_attrs)}>`);
 	_push(ssrRenderComponent(_component_NuxtRouteAnnouncer, null, null, _parent));
-	_push(ssrRenderComponent(_component_NuxtWelcome, null, null, _parent));
+	_push(ssrRenderComponent(_component_NuxtPage, null, null, _parent));
 	_push(`</div>`);
 }
 var _sfc_setup$2 = _sfc_main$2.setup;
@@ -2269,7 +2502,7 @@ var _sfc_main = {
 		nuxtApp.deferHydration();
 		nuxtApp.ssrContext.url;
 		const SingleRenderer = false;
-		provide(PageRouteSymbol, useRoute());
+		provide(PageRouteSymbol, useRoute$1());
 		nuxtApp.hooks.callHookWith((hooks) => hooks.map((hook) => hook()), "vue:setup", []);
 		const error = /* @__PURE__ */ useError();
 		const abortRender = error.value && !nuxtApp.ssrContext.error;
@@ -2336,5 +2569,5 @@ const entry = /*#__PURE__*/Object.freeze(/*#__PURE__*/Object.defineProperty({
   default: entry_default
 }, Symbol.toStringTag, { value: 'Module' }));
 
-export { NuxtLink as N, _plugin_vue_export_helper_default as _, entry as e, useHead$1 as u };
+export { $fetch$2 as $, NuxtLink as N, _plugin_vue_export_helper_default as _, useHead$1 as a, entry as e, useRoute$1 as u };
 //# sourceMappingURL=entry.mjs.map

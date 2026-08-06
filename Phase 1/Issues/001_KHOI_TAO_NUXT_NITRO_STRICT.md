@@ -35,30 +35,21 @@ Also cover applicable invalid input, role/ownership, boundary state, retry/idemp
 - Coverage does not fall below P1-QA thresholds; no new P0/P1/security/privacy issue.
 - Rollback/compensation behavior is documented for migrations, files, external providers or destructive state changes.
 
-## Completion evidence — fill before DONE
+## Completion evidence
 
 ```text
 Issue: P1-I001
-Canonical requirement sections: P1-SCOPE §1-3 (product/global invariants), P1-ARCH §1-3 (modular monolith, stack, directory structure), P1-QA §1-7 (coverage thresholds, CI gate steps)
-Dependencies verified: none (root issue)
-Exact files changed: app/app.vue, app/assets/css/main.css, package.json, nuxt.config.ts, tsconfig.json, playwright.config.ts, vitest.config.ts, prisma.config.ts, stryker.config.mjs, knip.json, pnpm-workspace.yaml (prettier --write, whitespace-only, no content diff)
-Migration/schema result: none — prisma/schema.prisma already scaffolded with postgresql datasource + prisma-client-js generator; no models yet (out of I001 scope)
-API/UI result: none — server/ and app/ are empty scaffolds per P1-ARCH §3 directory layout; no route/UI logic in I001 scope
-Unit/component tests: tests/setup/smoke.test.ts (pre-existing) — 2 tests pass via `pnpm test`
-Integration/contract tests: N/A — no repository/API code exists yet in this issue's scope
-E2E/security/performance tests: N/A — no user-facing route exists yet; production server smoke-start verified manually (node .output/server/index.mjs responded HTTP 200 on /)
-Coverage delta: 100% (0/0) — no business code exists yet, vacuous baseline per P1-QA §1
-Acceptance items satisfied:
-  - pnpm format:check passes on all files in allowed change surface (app/, package.json, nuxt.config.ts, tsconfig, prisma.config.ts, playwright/vitest config, knip.json, pnpm-workspace.yaml)
-  - pnpm lint passes (eslint . — 0 errors)
-  - pnpm typecheck passes (nuxt typecheck — 0 errors, TypeScript strict enabled in nuxt.config.ts)
-  - pnpm check:cycles passes (madge — no circular dependency)
-  - pnpm test passes (2/2 tests)
-  - pnpm build succeeds (production build, .output generated, 23.7 MB total/9.5 MB gzip)
-  - Production server boots and serves HTTP 200 (node .output/server/index.mjs)
-  - Directory structure matches P1-ARCH §3: app/, server/, prisma/, storage/ (gitignored runtime dir, correct per .gitignore), docs/ (not yet created — optional per P1-ARCH, no Phase 1 requirement mandates initial content)
-  - No Redis/microservice/queue server introduced; single Nuxt/Nitro modular monolith confirmed via package.json dependencies and nuxt.config.ts
-Rollback/compensation: N/A — no schema/data change; formatting changes are whitespace-only and revertible via git checkout of listed files
-Known limitations (no P0/P1): docs/ directory not yet created (no Phase 1 requirement mandates content at this stage); pre-existing repository issue found — .nuxt/ and .output/ build artifacts (99 files) are git-tracked from a prior "setup" commit despite being listed in .gitignore (gitignore does not retroactively untrack committed files); flagged to user, not remediated in this issue as it is outside P1-I001's allowed change surface and requires an explicit git rm decision.
+Canonical requirement sections: P1-SCOPE §3.1 (architecture invariant), P1-ARCH §1-4 (modular monolith, stack, directory structure, module boundary), P1-QA §1-2 (coverage thresholds, test types)
+Dependencies verified: none (foundation issue)
+Exact files changed: .prettierignore (exclude Phase 1/*.md canonical spec from formatting), vitest.config.ts (exclude e2e/** from vitest discovery so Playwright specs don't collide), e2e/smoke.spec.ts (new), docs/.gitkeep (new; storage/.gitkeep created locally but storage/ is gitignored by design per P1-ARCH §3 private storage)
+Migration/schema result: none — schema.prisma retains generator/datasource only, no business tables (correct for this issue; business schema is P1-I004/P1-I010/P1-I030 etc.)
+API/UI result: none — default Nuxt welcome page retained; no business route added
+Unit/component tests: tests/setup/smoke.test.ts (pre-existing) — vitest runner + Vue import proof, 2 passed
+Integration/contract tests: not applicable — no repository/provider code exists yet in this issue
+E2E/security/performance tests: e2e/smoke.spec.ts — asserts built Nitro server returns HTTP 200 and correct title on desktop + mobile Playwright projects, 2 passed
+Coverage delta: 100% (0/0) — no business statements/branches exist yet; P1-QA §1 thresholds vacuously satisfied, will apply once business code lands
+Acceptance items satisfied: (1) dependencies n/a-none, canonical modules read in full; (2) real build+server path exercised (production build → node .output/server/index.mjs → HTTP 200), not mocked; (3) format:check, lint, typecheck, test:coverage, build, check:cycles, check:deps, test:e2e all pass; (4) coverage at threshold (no regression possible, 0 baseline); (5) rollback n/a — no migration/destructive change, plain scaffolding
+Rollback/compensation: none required — no schema migration, no destructive change; revert is a plain git revert of the listed files
+Known limitations (no P0/P1): pre-existing repo debt noted and left out-of-scope — .nuxt/ and .output/ build artifacts are tracked in git despite .gitignore excluding them (predates this issue); flagged for a separate follow-up (git rm --cached), not fixed here since it is outside issue 001's allowed change surface and requires explicit user confirmation before altering tracked history
 ```
 

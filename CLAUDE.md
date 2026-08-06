@@ -86,6 +86,16 @@ Minimum project thresholds: 90% line coverage, 85% branch coverage; critical spe
 
 Do not hide failures with skipped/flaky tests, snapshots that approve incorrect behavior, broad mocks, or reduced thresholds.
 
+Autonomous multi-issue loop
+
+When the user asks to work through issues continuously (e.g. "code hết các issue", "chạy tự động"), chain the controlled workflow without stopping for per-step approval clicks: pick the next ready issue via /zenly-next, implement it, run /zenly-quality-gate, run /zenly-review, and if both pass, /zenly-close, then immediately continue to the next ready issue. Repeat without asking "continue?" between issues.
+
+If the quality gate or review finds a failure that is a straightforward implementation defect (failing test, lint/type error, missed acceptance criterion within the current issue's allowed change surface), fix it and re-run the narrowest relevant check, then the full gate, without pausing to ask permission — this is normal iteration, not a new decision.
+
+Stop the loop and report to the user, do not guess, when: a dependency is not DONE (BLOCKED), the issue/canonical modules/code disagree (SPEC_CONFLICT), evidence is insufficient to diagnose a failure (INSUFFICIENT_EVIDENCE), a fix would require touching a change surface outside the current issue, the same check fails after a genuine fix attempt (not a retry loop), or no issue in Phase 1/Issues/ is currently ready.
+
+The loop never commits, pushes, or marks an issue DONE without the complete evidence and independent review pass already required above — going faster between issues does not relax that bar.
+
 Commands and safety
 
 Use package scripts from package.json; do not invent alternate toolchains.
