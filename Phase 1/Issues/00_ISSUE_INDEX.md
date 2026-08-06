@@ -22,7 +22,7 @@
 
 | Order | Issue                                                                                                             | Stage      | Depends on                   | Canonical modules                            | Status |
 | ------:| -------------------------------------------------------------------------------------------------------------------| ------------| ------------------------------| ----------------------------------------------| --------|
-| 001   | [P1-I001 — Khởi tạo Nuxt Nitro strict](001_KHOI_TAO_NUXT_NITRO_STRICT.md)                                         | foundation | —                            | P1-SCOPE, P1-ARCH, P1-QA                     | TODO   |
+| 001   | [P1-I001 — Khởi tạo Nuxt Nitro strict](001_KHOI_TAO_NUXT_NITRO_STRICT.md)                                         | foundation | —                            | P1-SCOPE, P1-ARCH, P1-QA                     | DONE   |
 | 002   | [P1-I002 — Kiểm tra cấu hình môi trường](002_KIEM_TRA_CAU_HINH_MOI_TRUONG.md)                                     | foundation | 001                          | P1-ARCH, P1-SEC, P1-INFRA                    | TODO   |
 | 003   | [P1-I003 — Docker local với PostgreSQL](003_DOCKER_LOCAL_VOI_POSTGRESQL.md)                                       | foundation | 001, 002                     | P1-ARCH, P1-INFRA                            | TODO   |
 | 004   | [P1-I004 — Prisma migration và seed nền](004_PRISMA_MIGRATION_VA_SEED_NEN.md)                                     | foundation | 003                          | P1-DATA, P1-QA                               | TODO   |
